@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "quant"))
 import emdata as em  # noqa: E402
 import morning_rules  # noqa: E402
+import md2mail
 from newsfilter import filter_and_tag  # noqa: E402
 
 BJ = ZoneInfo("Asia/Shanghai")
@@ -130,7 +131,8 @@ if text:
     code = os.environ.get("SMTP_AUTH_CODE")
     to = os.environ.get("MAIL_TO", user)
     if user and code:
-        msg = MIMEText(text, "plain", "utf-8")
+        import md2mail
+        msg = MIMEText(md2mail.render(text), "html", "utf-8")
         msg["Subject"] = Header(f"主板雷达·早盘竞价简报 {now.strftime('%m-%d %H:%M')}", "utf-8")
         msg["From"] = user
         msg["To"] = to
