@@ -75,19 +75,70 @@ def build():
     else:
         L.append("- 无满足锚定的候选 → 竞价若无新主线，执行空仓预案")
     L.append("")
-    L.append("## 二、观察哨（不买，只看信号）")
+    L.append("## 二、隔夜与盘前环境")
+    try:
+        fut = em.sina_quotes(["hf_CHA50CFD", "hf_NQ"])
+        for k, nm in [("hf_CHA50CFD", "A50期指"), ("hf_NQ", "纳指期货")]:
+            v = fut.get(k)
+            if v and v.get("price") and v.get("prev"):
+                pct = (v["price"] / v["prev"] - 1) * 100
+                L.append(f"- {nm} {pct:+.2f}%（{'偏多' if pct > 0.3 else '偏空' if pct < -0.3 else '中性'}）")
+    except Exception:
+        L.append("- 期指数据缺源")
+    try:
+        idx = em.index_pct(["sh000001", "sz399006"])
+        L.append("- 昨收：" + "，".join(f"{v[0]} {v[1]:+.2f}%" for v in idx.values()))
+    except Exception:
+        pass
+    L.append("")
+    L.append("## 三、昨日板块热度（延续性观察）")
+    try:
+        fl = em.boards("concept") if em else []
+        fl = sorted(fl, key=lambda b: -(b.get("main_in") or 0))[:5]
+        for b in fl:
+            L.append(f"- {b['name']} {b['pct']:+.1f}% 主力{(b.get('main_in') or 0)/1e8:+.1f}亿 领涨{b.get('leader')}")
+    except Exception:
+        L.append("- 板块数据缺源")
+    L.append("")
+    L.append("## 四、消息面（财联社，已过滤无关）")
+    try:
+        from newsfilter import filter_and_tag
+        raw = em.news_cls(30)
+        items = []
+        for n in raw:
+            t = (n.get("title") or "").strip() or (n.get("content") or "")[:40]
+            if not t:
+                continue
+            full = t + (n.get("content") or "")
+            tag = "bad" if any(w in full for w in ("减持", "立案", "调查", "预亏", "退市", "违约", "制裁")) else \
+                ("good" if any(w in full for w in ("利好", "中标", "签订", "订单", "预增", "涨价", "并购", "增持", "回购", "获批", "政策", "降准", "降息")) else "mid")
+            items.append({"title": t, "tag": tag, "content": full})
+        kept, dropped = filter_and_tag(items)
+        for n in kept[:12]:
+            tag = {"good": "🔴利好", "bad": "🟢利空", "mid": "·"}[n["tag"]]
+            sec = ("/".join(n.get("sectors", [])[:2])) or ""
+            L.append(f"- [{tag}]{('【' + sec + '】') if sec else ''} {n['title']}")
+        L.append(f"- （已过滤无关快讯 {dropped} 条）")
+    except Exception:
+        L.append("- 电报缺源")
+    L.append("")
+    L.append("## 五、ETF 计划")
+    L.append("- ETF 短线：养殖ETF 159865（农业主线β，高开>2%等回踩，冲3%减半）")
+    L.append("- ETF 中线：银行ETF 512800（权重侧跷跷板，回调分批，拿2~3周）")
+    L.append("")
+    L.append("## 七、观察哨（不买，只看信号）")
     L.append(f"- 空间龙头={max_lbc}板：它开盘强弱=全网情绪锚（它断板→高低切低位）")
     L.append("- 9:25 集合竞价：农业/昨日主线集群高开家数≥4 → 主线确认")
     L.append("- 大盘宽度：竞价红盘家数 <40% → 只防守")
     L.append("")
-    L.append("## 三、竞价前检查单")
+    L.append("## 八、竞价前检查单")
     L.append("- ☐ 隔夜美股/中概/A50 期指方向（红涨绿跌影响开盘意愿）")
     L.append("- ☐ 财联社盘前电报有无黑天鹅/重大政策（利好利空标注）")
     L.append("- ☐ 昨日持仓票有无利空（集合竞价异常低开先减后看）")
     L.append("")
-    L.append("## 四、纪律")
+    L.append("## 九、纪律")
     L.append("- 9:20 前的挂单可撤=有假；9:20~9:25 才是真竞价")
-    L.append("- 本简报只给计划，确认信号以 9:27 竞价简报为准（竞价完自动推送）")
+    L.append("- 本简报为全量计划（仅缺竞价确认数据），确认信号以 9:27 竞价简报为准（自动推送）")
     L.append("- 锚定规则胜率>60%仅代表历史，不构成投资建议")
     return "\n".join(L)
 
