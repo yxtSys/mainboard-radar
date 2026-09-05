@@ -18,6 +18,7 @@ from scoring import score_stock, is_valid_stock, fmt_stock  # noqa: E402
 from review import sentiment_stage  # noqa: E402
 from factors import FACTORS, compute_factors  # noqa: E402
 from agents import analyze  # noqa: E402
+from newsfilter import filter_and_tag  # noqa: E402
 
 BJ = ZoneInfo("Asia/Shanghai")
 OUT = ROOT / "docs" / "data"
@@ -163,6 +164,7 @@ def main():
             continue
         s2 = dict(s)
         s2["strategies"] = score_stock(s2)
+        s2["strategy"] = primary_strategy(s2["strategies"], s2)["strategy"]
         fvals = compute_factors(s2, ctx)
         if s["code"] in prev_zt_map:
             fvals["lbc"] = prev_zt_map[s["code"]]
@@ -172,27 +174,34 @@ def main():
     cands.sort(key=lambda s: -s["strategies"]["cs"]["score"])
 
     # 消息命中表（个股名 → 电报条目）
+    # 消息面：只留金融相关 + 板块归类 + 个股命中
     news = []
     try:
-        for n in em.news_cls(15):
+        for n in em.news_cls(30):
             t = (n.get("title") or "").strip() or (n.get("content") or "").strip()[:40]
             if not t:
                 continue
             full = t + (n.get("content") or "")
             tag = "bad" if any(w in full for w in BAD) else ("good" if any(w in full for w in GOOD) else "mid")
-            news.append({"title": t, "tag": tag})
+            news.append({"title": t, "tag": tag, "time": str(n.get("time", ""))})
     except Exception:
         pass
-    feed["news"] = news
+    from scoring import mi_ok  # noqa
+    name2code = {s["name"]: s["code"] for s in snap if s.get("name")}
+    board_names = [b["name"] for b in boards]
+    news, dropped = filter_and_tag(news, board_names, name2code)
+    feed["news_dropped"] = dropped
+    by_sector = {}
+    for n in news:
+        for sec in n.get("sectors", []):
+            by_sector.setdefault(sec, []).append({"title": n["title"], "tag": n["tag"]})
+    feed["news_by_sector"] = {k: v[:3] for k, v in sorted(by_sector.items(), key=lambda kv: -len(kv[1]))[:10]}
     news_hint = {}
-    name2code = {s["name"]: s["code"] for s in snap}
     for n in news:
         if n["tag"] == "mid":
             continue
-        for nm, c in name2code.items():
-            if len(nm) >= 2 and nm in n["title"]:
-                news_hint[c] = {"title": n["title"], "tag": n["tag"]}
-                break
+        for h in n.get("stock_hits", []):
+            news_hint[h["code"]] = {"title": n["title"], "tag": n["tag"]}
     feed["news_hint"] = news_hint
 
     # 多角色研判（TradingAgents 架构，确定性证据链）——给超短分前8名
