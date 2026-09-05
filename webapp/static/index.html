@@ -42,7 +42,8 @@
         <div class="chips" id="typeChips1"></div>
       </div>
       <div class="sub">泡泡大小=涨跌幅度 · <span class="lg-red">■</span>上涨 <span class="lg-green">■</span>下跌 · 点击看该方向能买的票</div>
-      <canvas id="cvPct"></canvas>
+      <div class="sub">红=上涨 · 绿=下跌 · 按涨跌幅排名 · 点击看该方向能买的票</div>
+      <div id="barPct" class="barlist"></div>
     </div>
     <div class="chart-card">
       <div class="chart-head">
@@ -50,7 +51,8 @@
         <div class="chips" id="typeChips2"></div>
       </div>
       <div class="sub">泡泡大小=净流入/流出额 · <span class="lg-red">■</span>净流入 <span class="lg-green">■</span>净流出（东财主力口径，L2未接入）</div>
-      <canvas id="cvFlow"></canvas>
+      <div class="sub">红=净流入 · 绿=净流出 · 分流入榜/流出榜（东财主力口径，L2未接入）</div>
+      <div id="barFlow" class="barlist"></div>
     </div>
   </section>
 
@@ -132,6 +134,8 @@
   <button onclick="openMe()">⚙️ 我的设定</button>
   <button onclick="top.location.reload()">🔄 立即刷新</button>
 </div>
+
+<div id="sd" class="drawer hidden"></div>
 
 <div id="toast" class="toast hidden"></div>
 <script src="app.js"></script>
