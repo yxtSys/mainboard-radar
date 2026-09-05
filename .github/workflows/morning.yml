@@ -29,6 +29,7 @@ jobs:
         run: |
           git config user.name "yxtSys"
           git config user.email "yxtSys@users.noreply.github.com"
+          [ -f docs/data/morning_latest.md ] || (echo "休市无简报" && exit 0)
           git add docs/data/morning_latest.md
           git diff --cached --quiet && echo "no change" && exit 0
           git commit -m "morning brief $(date -u +%H:%M)"
