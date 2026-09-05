@@ -16,6 +16,7 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent))
 import emdata as em
+import morning_rules
 
 CFG = json.loads((Path(__file__).parent / "config.json").read_text(encoding="utf-8"))
 
@@ -302,6 +303,26 @@ def main():
     L.append(f"# 早盘竞价简报 {now_t.strftime('%Y-%m-%d %H:%M')}")
     L.append("")
     verdict = "强" if env_s >= 70 else ("弱" if env_s <= 35 else "中")
+    # 零、锚定信号（交接书规则，最高优先级）
+    try:
+        zt_y = em.zt_pool(prev_day)
+        snap_by_code = {s["code"]: s for s in snap}
+        signals, note = morning_rules.morning_signals(zt_y, snap_by_code)
+        trig = morning_rules.highlow_switch_trigger(zt_y)
+        L.append("## 零、锚定信号（交接书规则，仅推合格票）")
+        L.append(f"- {note}｜{trig['note']}")
+        if signals:
+            L.append("| 规则(胜率) | 角色 | 名称/代码 | 竞价高开 | 现价 | 操作 |")
+            L.append("|---|---|---|---|---|---|")
+            for g in signals:
+                L.append(f"| {g['rules']} | {g['role']} | {g['name']} {g['code']} | {g['gap']:+.1f}% | {g['price']} | 回踩竞价价买，止损-5% |")
+        else:
+            L.append("- **今日无合格信号，建议空仓**")
+        L.append("")
+    except Exception as e:
+        L.append(f"## 零、锚定信号：数据缺失({type(e).__name__})，不编造")
+        L.append("")
+
     L.append(f"## 一、大盘环境（{env_s}/100，定性：{verdict}，仓位系数 x{env_f}）〔数据源:{src}〕")
     L.append(f"- 竞价概况：上涨 {up} 家 / 下跌 {dn} 家，竞价成交合计 {total_amt:.0f} 亿")
     if idx:
