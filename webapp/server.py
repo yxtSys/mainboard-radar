@@ -638,7 +638,7 @@ def stock_detail(code: str):
         pass
     # 产业链定位 + 同链条公司
     try:
-        chain_data = chainmod.chain_profile(code, zygc, (profile or {}).get("所属行业", ""), s.get("name", ""), snap, get_zt())
+        chain_data = chainmod.chain_profile(code, zygc, (profile or {}).get("所属行业", ""), s.get("name", ""), list(snap.values()), get_zt())
     except Exception:
         chain_data = {"positions": [], "peers": [], "chains_known": list(chainmod.CHAINS.keys())}
     # —— 量化操作建议：全部由因子推导，每个数字可复算 ——
@@ -666,14 +666,23 @@ def stock_detail(code: str):
            "anchors": ["竞价价(9:25撮合)", "分时均价线", "板块领涨股(锚定龙头不动手弱跟风)", "大盘环境分"],
            "buy": f"买1 {lvl['buy1']}（回踩2%）；买2 {lvl['buy2']}（深回踩4%）；突破减仓位 {lvl['reduce1']} 不追",
            "stop": f"止损 {lvl['stop']}（-5%硬纪律）；跌破竞价价且反抽不过均价线先减半"}
-    return {"code": code, "name": s["name"], "price": s.get("price"), "pct": s.get("pct"),
+    def _clean(v):
+        if isinstance(v, dict):
+            return {k: _clean(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [_clean(x) for x in v]
+        if isinstance(v, float) and v != v:
+            return None
+        return v
+
+    return _clean({"code": code, "name": s["name"], "price": s.get("price"), "pct": s.get("pct"),
             "strategy": strategy["strategy"], "strategy_score": strategy["score"],
             "strategies": strategies, "factors": factors, "agents": agents_res,
             "profile": profile, "zygc": zygc, "zygc_source": zsrc,
             "chain": chain_data, "holders": holders,
             "ops": ops, "float_yi": round(mv, 1), "chg60": chg60,
             "source": {"行情": "东财/新浪快照", "公司资料": zsrc or "未取到", "研判": "quant/agents.py 规则链+因子数值",
-                       "产业链": "quant/chain.py 模板+主营构成关键词（东财概念成分/涨停池降级）"}}
+                       "产业链": "quant/chain.py 模板+主营构成关键词（东财概念成分/涨停池降级）"}})
 
 
 app.mount("/", StaticFiles(directory=str(ROOT / "webapp" / "static"), html=True))
