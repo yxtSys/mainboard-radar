@@ -26,7 +26,8 @@ L = []
 
 
 def build():
-    if not em.is_trade_date(today):
+    force = os.environ.get("FORCE_RUN") == "1"
+    if not em.is_trade_date(today) and not force:
         print("非交易日，休市")
         return None
     L.append(f"# 早盘竞价执行简报 {now.strftime('%Y-%m-%d %H:%M')}")
@@ -67,6 +68,24 @@ def build():
     env = f"{up}/{up+dn}" if (up + dn) else "-"
     L.append(f"## 一、环境（竞价宽度 {env}，昨溢价 {prem if prem is not None else '缺源'}，数据源 {src}）")
     L.append("- 溢价≤0或宽度<45% → 只防守；溢价>2% → 可进攻")
+    L.append("")
+
+    # 情绪周期 + 龙头战法 + 资金流向
+    L.append("## 情绪周期与龙头战法")
+    prem_s = prem if prem is not None else 0
+    stage = "进攻期" if prem_s >= 2 else ("退潮防守期" if prem_s <= -0.5 else "震荡期")
+    L.append(f"- 昨涨停溢价 {prem if prem is not None else '缺源'}，阶段=**{stage}**；溢价>0才做接力，≤0只防守")
+    L.append("- 角色分工：空间龙头=情绪总锚(断板→高低切)；中军=跟随资金主池(沿均线持有)；卡位=接力锚(高开1.5~3.5%跟)；补涨=只低吸。小弟梯队见锚定信号表解读行")
+    try:
+        fl = sorted(em.boards("concept"), key=lambda b: -(b.get("main_in") or 0))
+        ins = fl[:5]
+        outs = sorted(fl, key=lambda b: (b.get("main_in") or 0))[:5]
+        L.append("## 资金流向（从哪到哪）")
+        L.append("- 流入主力 → " + "；".join(f"{b['name']} +{(b.get('main_in') or 0)/1e8:.1f}亿({b['pct']:+.1f}%)" for b in ins))
+        L.append("- 流出主力 → " + "；".join(f"{b['name']} {(b.get('main_in') or 0)/1e8:.1f}亿({b['pct']:+.1f}%)" for b in outs))
+        L.append("- 解读：流入侧=次日先看高开承接；流出侧=回避高位股（高低切方向）")
+    except Exception:
+        L.append("- 板块资金缺源")
     L.append("")
 
     # 二、消息面（过滤+板块归类）
