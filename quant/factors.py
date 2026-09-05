@@ -18,6 +18,8 @@ FACTORS = [
     {"key": "a50",        "name": "A50期指",        "formula": "(期指现价/昨结-1)*100",                "source": "新浪 hf_CHA50CFD"},
     {"key": "nq",         "name": "纳指期货",       "formula": "(期指现价/昨结-1)*100",                "source": "新浪 hf_NQ"},
     {"key": "lbc",        "name": "连板身位",       "formula": "昨日涨停池连板数",                     "source": "EM push2ex"},
+    {"key": "event_days", "name": "事件窗口天数",   "formula": "距季报披露窗/期指交割/重大会议的剩余自然日", "source": "交易日历(可溯源,免费)"},
+    {"key": "ambush",     "name": "埋伏资金分",     "formula": "低位(chg60<-15)+主力净流入为正+换手5~15% → 吸筹轨迹代理分0~100", "source": "EM f24/f62派生"},
 ]
 
 
