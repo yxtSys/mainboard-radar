@@ -288,7 +288,7 @@ async function openStock(code) {
   const el = $("#sd"); el.classList.remove("hidden");
   el.innerHTML = '<div class="empty">个股拆解加载中…</div>';
   try {
-    const d = await jget(`/api/stock/${code}`);
+    const d = await jget(`/api/stock/${code}`); act("stock", d.name || code, code);
     const ag = d.agents || {};
     el.innerHTML = `<div class="dw-head"><button class="ghost-btn" onclick="document.getElementById('sd').classList.add('hidden')">← 返回</button>
       <h3>${esc(d.name)} ${d.code}</h3><span class="meta">${d.price ?? "-"}元 ${d.pct > 0 ? "+" : ""}${(d.pct ?? 0).toFixed(2)}%</span></div>
@@ -313,14 +313,15 @@ async function openStock(code) {
 
 /* ---------- 个股深拆结束 ---------- */
 async function openBoard(it) {
-  curStrat = "cs"; curBoard = it.code;
+  curStrat = PROFILE?.mode || MODE; curBoard = it.code; act("board", it.name, it.code);
+  $("#stratTabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.s === curStrat));
   $("#drawer").classList.remove("hidden");
   $("#dwTitle").textContent = it.name;
   $("#dwMeta").textContent = "仅显示：主板 · 非ST · " + (PROFILE ? `${PROFILE.pmin}~${PROFILE.pmax}元` : "全部价格（先去【我的】设定区间）");
   $("#dwList").innerHTML = '<div class="empty">加载成分股…</div>';
   const key = PROFILE ? PROFILE.pmin + "-" + PROFILE.pmax : "0-99999";
   try {
-    const d = await jget(`/api/board/${encodeURIComponent(it.code)}?pmin=${PROFILE?.pmin ?? 0}&pmax=${PROFILE?.pmax ?? 99999}`);
+    const d = await jget(`/api/board/${encodeURIComponent(it.code)}?pmin=${PROFILE?.pmin ?? 0}&pmax=${PROFILE?.pmax ?? 99999}&mode=${PROFILE?.mode || MODE}`);
     boardCache[it.code] = d;
     $("#dwNote").textContent = d.note || (d.limited ? "数据源限流中，成分可能不全" : `共 ${d.stocks.length} 只符合条件`);
     renderBoardList();
@@ -342,7 +343,7 @@ $("#stratTabs").addEventListener("click", e => {
   if (e.target.dataset.s) {
     curStrat = e.target.dataset.s;
     $("#stratTabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b === e.target));
-    renderBoardList();
+    renderBoardList(); setMode(curStrat, true);
   }
 });
 $("#dwClose").onclick = () => $("#drawer").classList.add("hidden");
@@ -372,6 +373,9 @@ $("#pfSave").onclick = async () => {
 };
 function renderMe() {
   if (!PROFILE) return;
+  $("#meActs")?.remove();
+  const acts = (PROFILE.activity || []).slice(0, 10).map(a => `• [${{ mode: "切模式", board: "看板块", stock: "看个股", chain: "看产业链" }[a.kind] || a.kind}] ${esc(a.label)} ${a.t}`).join("<br>");
+  document.querySelector("#me .card").insertAdjacentHTML("afterend", `<div class="card"><h4>足迹（同步到服务器）</h4><div class="note">${acts || "暂无"}</div></div><div id="meActs"></div>`);
   $("#meWatch").innerHTML = (PROFILE.watchlist || []).map(c =>
     `<div class="stock-item st-top"><span class="st-name">${c}</span><button class="ghost-btn" onclick="delWatch('${c}')">移除</button></div>`).join("") || '<div class="note">还没有自选股，在板块详情里点 ★ 收藏</div>';
   $("#meAlerts").innerHTML = (PROFILE.alerts || []).map(a =>
@@ -424,6 +428,45 @@ function toast(msg) {
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.add("hidden"), 2600);
 }
 
+/* ---------- 全局模式 + 足迹同步 ---------- */
+let MODE = localStorage.getItem("mode") || "short";
+function renderModeBar() {
+  let bar = document.getElementById("modeBar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "modeBar"; bar.className = "tabs"; bar.style.margin = "10px 0 0";
+    document.querySelector("main").prepend(bar);
+  }
+  bar.innerHTML = `<span class="meta" style="align-self:center">当前模式：</span>` +
+    ["cs", "short", "mid", "long"].map(m =>
+      `<button data-m="${m}" class="${m === MODE ? "on" : ""}">${{ cs: "超短", short: "短线", mid: "中线", long: "长线" }[m]}模式</button>`).join("");
+  bar.querySelectorAll("button").forEach(b => b.onclick = () => setMode(b.dataset.m));
+}
+function setMode(m, silent) {
+  MODE = m; localStorage.setItem("mode", m); renderModeBar();
+  if (PROFILE) jpost(`/api/activity?name=${encodeURIComponent(PROFILE.name)}&pin=${encodeURIComponent(PROFILE.pin)}&kind=mode&label=${m}`).catch(() => {});
+  if (!silent) { pollEtf(); toast(`已切换${{ cs: "超短", short: "短线", mid: "中线", long: "长线" }[m]}模式，全站按此过滤`); }
+}
+function act(kind, label, code) {
+  if (PROFILE) jpost(`/api/activity?name=${encodeURIComponent(PROFILE.name)}&pin=${encodeURIComponent(PROFILE.pin)}&kind=${kind}&label=${encodeURIComponent(label || "")}&code=${encodeURIComponent(code || "")}`).catch(() => {});
+}
+function resumeLast() {
+  const last = PROFILE && PROFILE.last;
+  if (last && last.kind) {
+    $("#resumeBar")?.remove();
+    const bar = document.createElement("div");
+    bar.id = "resumeBar"; bar.className = "alert-bar";
+    bar.innerHTML = `🕐 上次看到：<b>${esc(last.label)}</b> <button class="ghost-btn" onclick='resumeGo()'>继续看</button>`;
+    document.querySelector("main").prepend(bar);
+  }
+}
+function resumeGo() {
+  const last = PROFILE?.last; if (!last) return;
+  document.getElementById("resumeBar")?.remove();
+  if (last.kind === "board") { setMode(MODE, true); openBoard({ code: last.code, name: last.label, type: "concept" }); }
+  else if (last.kind === "stock" && last.code) openStock(last.code);
+}
+
 /* ---------- 登录门 ---------- */
 async function requireLogin() {
   if (PROFILE) {
@@ -457,7 +500,7 @@ $("#lgGo").onclick = async () => {
     PROFILE = { name, pin, pmin: d.pmin, pmax: d.pmax, watchlist: d.watchlist, alerts: d.alerts };
     localStorage.setItem("profile", JSON.stringify(PROFILE));
     $("#login").classList.add("hidden");
-    applyProfileUI(); renderMe(); pollAlerts();
+    applyProfileUI(); renderMe(); pollAlerts(); renderModeBar(); resumeLast();
     toast(`欢迎，${name}｜区间 ${d.pmin}~${d.pmax} 元`);
   } catch (e) { $("#lgMsg").textContent = "登录失败：昵称或口令不对"; }
 };
@@ -476,6 +519,7 @@ chartFlow = new Bubbles($("#cvFlow"), "flow");
 chipBtns($("#typeChips1"), "pct", "boardType");
 chipBtns($("#typeChips2"), "flow", "boardType");
 pollStatus(); pollIndices(); pollBoards(); pollEtf(); pollNews();
+renderModeBar();
 requireLogin();          // 有档案则静默校验并恢复，无档案弹登录门
 setInterval(pollStatus, 10000);
 setInterval(pollIndices, 10000);
