@@ -133,6 +133,22 @@ def main():
         pass
     ctx = {"prev_zt": prev_zt_map, "zt_premium": premium, "break_rate": break_rate, "a50": a50, "nq": nq}
 
+    # 未来事件窗口（跟随资金提前埋伏的时间锚）：距季报披露窗/期指交割日的剩余天数
+    import calendar as _cal
+    def _event_days(now):
+        days = []
+        for m in [now.month, now.month + 1 if now.month < 12 else 1]:
+            yr = now.year if m == now.month else (now.year + (1 if now.month == 12 else 0))
+            last = _cal.monthrange(yr, m)[1]
+            days.append((dt.date(yr, m, last) - now.date()).days)  # 月末=季报/月度数据窗口
+        third_fri = [d for d in range(16, 23) if dt.date(now.year, now.month, d).weekday() == 4][0]
+        days.append((dt.date(now.year, now.month, third_fri) - now.date()).days)  # 期指交割(当月第3个周五)
+        return min(abs(d) for d in days)
+    try:
+        ctx["event_days"] = _event_days(now)
+    except Exception:
+        pass
+
     # 板块（东财 → 同花顺 → 新浪）
     boards, bsrc = [], "offline"
     try:
@@ -166,6 +182,14 @@ def main():
         s2["strategies"] = score_stock(s2)
         s2["strategy"] = primary_strategy(s2["strategies"], s2)["strategy"]
         fvals = compute_factors(s2, ctx)
+        # 埋伏资金轨迹代理分：低位+有承接+温和换手 = 有人提前埋伏的特征组合
+        amb = 0
+        if (fvals.get("chg60") or 0) <= -15: amb += 40
+        if (fvals.get("main_in_yi") or 0) > 0: amb += 30
+        if 5 <= (fvals.get("turnover") or 0) <= 15: amb += 20
+        if (fvals.get("pct") or 99) <= 3: amb += 10
+        fvals["ambush"] = amb
+        fvals["event_days"] = ctx.get("event_days")
         if s["code"] in prev_zt_map:
             fvals["lbc"] = prev_zt_map[s["code"]]
             s2["why"] = f"昨{prev_zt_map[s['code']]}板"
