@@ -1,0 +1,345 @@
+/* ═══════════════════════════════════════════════════════════════
+ *  「晴空蓝 × 蒲公英橙」· mdnice 专用主题  v3.0
+ *
+ *  本版专为 mdnice（墨滴）重写：
+ *  · 全部选择器以 #nice 开头（mdnice 唯一合法前缀）
+ *  · 所有关键属性加 !important —— 压过 mdnice 基础主题的同名样式，
+ *    解决「标题不蓝 / 引用块发灰 / 颜色盖不住」的问题
+ *
+ *  配色（仅两色，明亮无灰）：
+ *    晴空蓝   #1677FF  → 主/二级标题、表头（大面积主色）
+ *    深空蓝   #0958D9  → 加粗、四级标题（深一档，正文中最醒目）
+ *    蒲公英橙 #FFA940  → 竖线、引用边、圆点、分隔线（小面积点缀）
+ *    深橙     #D46B08  → 三级标题、斜体（白底上清晰的橙）
+ *
+ *  字体：苹方 / 微软雅黑系统无衬线栈（无宋体）
+ *  规格：正文 15px · 行距 1.75 · 字距 1px · 两端对齐
+ *
+ *  用法：mdnice → 主题 → 主题管理 → 新建主题 → 全选粘贴本文件 → 保存并选中
+ * ═══════════════════════════════════════════════════════════════ */
+
+
+/* ── 1. 全局容器 ─────────────────────────────── */
+#nice {
+  font-family: -apple-system-font, BlinkMacSystemFont, "Helvetica Neue",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei",
+    Arial, sans-serif !important;
+  font-size: 15px !important;
+  color: #333333 !important;
+  line-height: 1.75 !important;
+  letter-spacing: 1px !important;
+  word-break: break-word !important;
+  background-color: transparent !important;
+}
+
+
+/* ── 2. 正文段落 ─────────────────────────────── */
+#nice p {
+  margin: 12px 0 !important;
+  padding: 0 !important;
+  font-size: 15px !important;
+  line-height: 1.75 !important;
+  letter-spacing: 1px !important;
+  color: #333333 !important;
+  text-align: justify !important;
+}
+
+
+/* ── 3. 标题（文字可能在 h2 里，也可能包在 h2 span 里，两处都压）── */
+
+/* 一级标题：晴空蓝居中 + 蒲公英橙底线 */
+#nice h1 {
+  margin: 40px 0 24px !important;
+  padding: 0 !important;
+  text-align: center !important;
+  font-size: 21px !important;
+  font-weight: bold !important;
+  color: #1677ff !important;
+  line-height: 1.5 !important;
+  letter-spacing: 1px !important;
+  border: none !important;
+  background: none !important;
+}
+
+#nice h1 span {
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 2px 10px 10px !important;
+  font-size: 21px !important;
+  font-weight: bold !important;
+  color: #1677ff !important;
+  border: none !important;
+  border-bottom: 3px solid #ffa940 !important;
+  background: none !important;
+}
+
+/* 二级标题：晴空蓝字 + 蒲公英橙竖线 */
+#nice h2 {
+  margin: 36px 0 20px !important;
+  padding: 0 !important;
+  font-size: 19px !important;
+  font-weight: bold !important;
+  color: #1677ff !important;
+  line-height: 1.45 !important;
+  letter-spacing: 1px !important;
+  border: none !important;
+  background: none !important;
+}
+
+#nice h2 span {
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 0 0 0 12px !important;
+  font-size: 19px !important;
+  font-weight: bold !important;
+  color: #1677ff !important;
+  line-height: 1.45 !important;
+  border: none !important;
+  border-left: 4px solid #ffa940 !important;
+  background: none !important;
+}
+
+/* 三级标题：深橙 */
+#nice h3 {
+  margin: 28px 0 14px !important;
+  padding: 0 !important;
+  font-size: 17px !important;
+  font-weight: bold !important;
+  color: #d46b08 !important;
+  line-height: 1.5 !important;
+  border: none !important;
+  background: none !important;
+}
+
+#nice h3 span {
+  font-size: 17px !important;
+  font-weight: bold !important;
+  color: #d46b08 !important;
+  border: none !important;
+}
+
+/* 四级标题：深空蓝 */
+#nice h4 {
+  margin: 22px 0 12px !important;
+  padding: 0 !important;
+  font-size: 15px !important;
+  font-weight: bold !important;
+  color: #0958d9 !important;
+  border: none !important;
+  background: none !important;
+}
+
+
+/* ── 4. 文本强调 ─────────────────────────────── */
+
+/* 加粗：深空蓝 */
+#nice strong {
+  font-weight: bold !important;
+  color: #0958d9 !important;
+}
+
+/* 斜体：深橙 */
+#nice em {
+  font-style: italic !important;
+  color: #d46b08 !important;
+  letter-spacing: 1px !important;
+}
+
+/* 加粗斜体 */
+#nice em strong,
+#nice strong em {
+  font-style: italic !important;
+  font-weight: bold !important;
+  color: #0958d9 !important;
+}
+
+/* 删除线 */
+#nice del {
+  text-decoration: line-through !important;
+  color: #bfbfbf !important;
+}
+
+/* 链接：深空蓝字 + 蒲公英橙下划线 */
+#nice a {
+  color: #0958d9 !important;
+  font-weight: bold !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid #ffa940 !important;
+}
+
+
+/* ── 5. 引用块：浅橙底 + 蒲公英橙边（重点压色对象）── */
+#nice blockquote,
+#nice .multiquote-1,
+#nice .multiquote-2,
+#nice .multiquote-3 {
+  margin: 18px 0 !important;
+  padding: 14px 16px !important;
+  background: #fff4e6 !important;
+  border: none !important;
+  border-left: 4px solid #ffa940 !important;
+  border-radius: 0 8px 8px 0 !important;
+  font-style: normal !important;
+  color: #333333 !important;
+}
+
+#nice blockquote p,
+#nice blockquote span,
+#nice .multiquote-1 p,
+#nice .multiquote-2 p,
+#nice .multiquote-3 p {
+  margin: 6px 0 !important;
+  font-size: 15px !important;
+  line-height: 1.8 !important;
+  letter-spacing: 1px !important;
+  color: #333333 !important;
+  text-align: justify !important;
+}
+
+#nice blockquote strong {
+  color: #0958d9 !important;
+}
+
+
+/* ── 6. 列表：蒲公英橙圆点 ─────────────────── */
+#nice ul,
+#nice ol {
+  margin: 12px 0 !important;
+  padding-left: 26px !important;
+}
+
+#nice li {
+  margin: 6px 0 !important;
+  font-size: 15px !important;
+  line-height: 1.8 !important;
+  color: #333333 !important;
+  text-align: justify !important;
+}
+
+#nice li section {
+  margin: 0 !important;
+  font-size: 15px !important;
+  color: #333333 !important;
+}
+
+#nice ul li::marker,
+#nice ol li::marker {
+  color: #ffa940 !important;
+}
+
+
+/* ── 7. 分隔线：蒲公英橙渐隐光线 ─────────────── */
+#nice hr {
+  margin: 32px 0 !important;
+  border: none !important;
+  height: 1px !important;
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 169, 64, 0),
+    rgba(255, 169, 64, 0.85),
+    rgba(255, 169, 64, 0)
+  ) !important;
+}
+
+
+/* ── 8. 表格：晴空蓝表头 + 浅蓝斑马纹 ─────────── */
+#nice table {
+  width: 100% !important;
+  display: table !important;
+  border-collapse: collapse !important;
+  margin: 18px 0 !important;
+  font-size: 14px !important;
+  letter-spacing: 0.5px !important;
+  line-height: 1.6 !important;
+}
+
+#nice table tr th {
+  background: #1677ff !important;
+  color: #ffffff !important;
+  border: 1px solid #1677ff !important;
+  padding: 10px 12px !important;
+  font-weight: bold !important;
+  text-align: left !important;
+}
+
+#nice table tr td {
+  background: #ffffff !important;
+  border: 1px solid #c9e2ff !important;
+  padding: 10px 12px !important;
+  color: #333333 !important;
+}
+
+#nice table tr:nth-child(even) td {
+  background: #f0f7ff !important;
+}
+
+
+/* ── 9. 图片与图注 ─────────────────────────── */
+#nice img {
+  display: block !important;
+  margin: 20px auto !important;
+  max-width: 100% !important;
+  border-radius: 8px !important;
+}
+
+#nice figure {
+  margin: 20px 0 !important;
+  text-align: center !important;
+}
+
+#nice figcaption {
+  margin: 8px 0 0 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.5px !important;
+  color: #999999 !important;
+  text-align: center !important;
+}
+
+
+/* ── 10. 行内代码与代码块 ────────────────────── */
+#nice p code,
+#nice li code {
+  color: #0958d9 !important;
+  background: #f0f7ff !important;
+  padding: 2px 6px !important;
+  margin: 0 2px !important;
+  border-radius: 3px !important;
+  font-size: 13px !important;
+  font-family: "Courier New", Consolas, monospace !important;
+}
+
+#nice pre {
+  margin: 16px 0 !important;
+  padding: 14px 16px !important;
+  background: #f0f7ff !important;
+  border-radius: 8px !important;
+  overflow-x: auto !important;
+  line-height: 1.6 !important;
+}
+
+#nice pre code {
+  color: #333333 !important;
+  font-size: 13px !important;
+  font-family: "Courier New", Consolas, monospace !important;
+  background: none !important;
+}
+
+
+/* ── 11. 脚注 ───────────────────────────────── */
+#nice .footnote-word,
+#nice .footnote-ref {
+  color: #d46b08 !important;
+  font-weight: bold !important;
+}
+
+#nice .footnotes-sep {
+  border-top: 1px solid #c9e2ff !important;
+  margin-top: 32px !important;
+  padding-top: 16px !important;
+}
+
+#nice .footnote-item p {
+  margin: 4px 0 !important;
+  font-size: 12px !important;
+  color: #999999 !important;
+}

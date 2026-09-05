@@ -1,0 +1,502 @@
+/* ═══════════════════════════════════════════════════════════════
+ *  「月满金秋」· 微信公众号 Markdown 主题  v1.0
+ *  兼容：mdnice（墨滴）/ WeMD 自定义主题 —— 双前缀，直接整份粘贴
+ *
+ *  设计语言：中秋 · 一轮明月落进排版里
+ *    夜空黛蓝  #2E4A62  →  主标题 / 二级标题 / 加粗 / 表头（沉稳可信赖）
+ *    月光鎏金  #C9A254  →  装饰竖线 / 引用边框 / 列表圆点 / 分隔线（点睛）
+ *    深金      #96742A  →  三级标题 / 脚注（衬金色，白底上依然清晰）
+ *    云畔米白  #FAF6EC  →  引用底色 / 表格斑马纹（柔和不刺眼）
+ *    墨色      #3F3F3F  →  正文（比纯黑柔和，久读不累）
+ *
+ *  字体：苹方 / 微软雅黑系统无衬线栈，全篇不含宋体
+ *  规格：正文 15px · 行距 1.75 · 字距 1px · 两端对齐（公众号主流规范）
+ *
+ *  用法：
+ *   · mdnice：主题 → 自定义主题 → 全选替换为本文件 → 保存 → 复制到公众号
+ *   · WeMD ：主题 → 自定义 CSS / 主题设计器 → 粘贴本文件 → 保存
+ * ═══════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────
+ * 0. WeMD 主题设计器变量（仅 WeMD 读取，色值与下方规则一致）
+ * ─────────────────────────────────────────────── */
+#wemd {
+  /* 全局 */
+  --wemd-page-padding: 20px;
+  --wemd-font-size: 15px;
+  --wemd-line-height: 1.75;
+  --wemd-paragraph-margin: 12px;
+  --wemd-paragraph-padding: 0px;
+  --wemd-text-color: #3f3f3f;
+  --wemd-primary-color: #2e4a62;
+  --wemd-primary-color-20: rgba(46, 74, 98, 0.12);
+  --wemd-primary-color-30: rgba(46, 74, 98, 0.18);
+  --wemd-primary-color-50: #2e4a6250;
+  --wemd-letter-spacing: 1px;
+  --wemd-underline-style: solid;
+  --wemd-underline-color: currentColor;
+
+  /* 标题 */
+  --wemd-h1-font-size: 21px;
+  --wemd-h1-color: #2e4a62;
+  --wemd-h1-margin-top: 40px;
+  --wemd-h1-margin-bottom: 24px;
+  --wemd-h2-font-size: 19px;
+  --wemd-h2-color: #2e4a62;
+  --wemd-h2-margin-top: 36px;
+  --wemd-h2-margin-bottom: 20px;
+  --wemd-h3-font-size: 17px;
+  --wemd-h3-color: #96742a;
+  --wemd-h3-margin-top: 28px;
+  --wemd-h3-margin-bottom: 14px;
+  --wemd-h4-font-size: 15px;
+  --wemd-h4-color: #2e4a62;
+  --wemd-h4-margin-top: 22px;
+  --wemd-h4-margin-bottom: 12px;
+
+  /* 代码 */
+  --wemd-code-background: #f7f1e3;
+  --wemd-code-font-size: 13px;
+  --wemd-inline-code-color: #a85c32;
+  --wemd-inline-code-background: #f7f1e3;
+
+  /* 引用 */
+  --wemd-quote-background: #faf6ec;
+  --wemd-quote-border-color: #c9a254;
+  --wemd-quote-border-width: 4px;
+  --wemd-quote-border-style: solid;
+  --wemd-quote-text-color: #5e594e;
+  --wemd-quote-font-size: 15px;
+  --wemd-quote-line-height: 1.8;
+  --wemd-quote-padding-x: 16px;
+  --wemd-quote-padding-y: 14px;
+
+  /* 图片 */
+  --wemd-image-margin: 20px;
+  --wemd-image-border-radius: 8px;
+  --wemd-image-caption-color: #918b80;
+  --wemd-image-caption-font-size: 12px;
+  --wemd-image-caption-align: center;
+
+  /* 链接与文本 */
+  --wemd-link-color: #2e4a62;
+  --wemd-italic-color: #6e6250;
+  --wemd-del-color: #a9a49b;
+  --wemd-mark-background: #f9ebc9;
+  --wemd-mark-color: #6b4e14;
+
+  /* 表格 */
+  --wemd-table-header-background: #2e4a62;
+  --wemd-table-header-color: #ffffff;
+  --wemd-table-border-color: #e9ddbc;
+
+  /* 分割线 */
+  --wemd-hr-color: #d9c08a;
+  --wemd-hr-height: 1px;
+  --wemd-hr-margin: 32px;
+
+  /* 列表 */
+  --wemd-list-spacing: 6px;
+  --wemd-list-marker-color: #c9a254;
+  --wemd-list-marker-color-l2: #d9c08a;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 1. 全局容器
+ * ─────────────────────────────────────────────── */
+#nice,
+#wemd {
+  font-family: -apple-system-font, BlinkMacSystemFont, "Helvetica Neue",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei",
+    Arial, sans-serif;
+  font-size: 15px;
+  color: #3f3f3f;
+  line-height: 1.75;
+  letter-spacing: 1px;
+  word-break: break-word;
+  background-color: transparent;
+}
+
+/* WeMD 预览容器宽度（mdnice 由编辑器自身控制） */
+#wemd {
+  max-width: 677px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 2. 正文段落
+ * ─────────────────────────────────────────────── */
+#nice p,
+#wemd p {
+  margin: 12px 0;
+  font-size: 15px;
+  line-height: 1.75;
+  letter-spacing: 1px;
+  color: #3f3f3f;
+  text-align: justify;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 3. 标题
+ *    mdnice 标题文字包在 span 里，WeMD 包在 .content 里，
+ *    因此字号颜色写在两级，装饰线只写在文字容器上
+ * ─────────────────────────────────────────────── */
+
+/* 一级标题（文章主标题）：居中 + 一条月光金弧线 */
+#nice h1,
+#wemd h1 {
+  margin: 40px 0 24px;
+  text-align: center;
+  font-size: 21px;
+  font-weight: bold;
+  color: #2e4a62;
+  line-height: 1.5;
+  letter-spacing: 1px;
+}
+
+#nice h1 span,
+#wemd h1 .content {
+  display: inline-block;
+  padding: 2px 10px 10px;
+  border-bottom: 2px solid #e6cf9c;
+}
+
+/* 二级标题（章节）：黛蓝字 + 鎏金竖线 */
+#nice h2,
+#wemd h2 {
+  margin: 36px 0 20px;
+}
+
+#nice h2,
+#nice h2 span,
+#wemd h2 .content {
+  font-size: 19px;
+  font-weight: bold;
+  color: #2e4a62;
+  line-height: 1.45;
+}
+
+#nice h2 span,
+#wemd h2 .content {
+  display: inline-block;
+  padding-left: 12px;
+  border-left: 4px solid #c9a254;
+}
+
+/* 三级标题（小节）：深金 */
+#nice h3,
+#wemd h3 {
+  margin: 28px 0 14px;
+}
+
+#nice h3,
+#nice h3 span,
+#wemd h3 .content {
+  font-size: 17px;
+  font-weight: bold;
+  color: #96742a;
+  line-height: 1.5;
+}
+
+/* 四级标题 */
+#nice h4,
+#wemd h4 {
+  margin: 22px 0 12px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #2e4a62;
+}
+
+/* WeMD 标题装饰占位（不需要，隐藏） */
+#wemd h1 .prefix,
+#wemd h1 .suffix,
+#wemd h2 .prefix,
+#wemd h2 .suffix,
+#wemd h3 .prefix,
+#wemd h3 .suffix,
+#wemd h4 .prefix,
+#wemd h4 .suffix {
+  display: none;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 4. 文本强调
+ * ─────────────────────────────────────────────── */
+
+/* 加粗：黛蓝，正文里最醒目的一层 */
+#nice strong,
+#wemd strong {
+  font-weight: bold;
+  color: #2e4a62;
+}
+
+/* 斜体 */
+#nice em,
+#wemd em {
+  font-style: italic;
+  color: #6e6250;
+}
+
+/* 加粗斜体 */
+#nice em strong,
+#nice strong em,
+#wemd em strong,
+#wemd strong em {
+  font-style: italic;
+  font-weight: bold;
+  color: #2e4a62;
+}
+
+/* 删除线 */
+#nice del,
+#wemd del {
+  text-decoration: line-through;
+  color: #a9a49b;
+}
+
+/* 高亮 mark */
+#nice mark,
+#wemd mark {
+  background: #f9ebc9;
+  color: #6b4e14;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* 链接 */
+#nice a,
+#wemd a {
+  color: #2e4a62;
+  font-weight: bold;
+  text-decoration: none;
+  border-bottom: 1px solid #c9a254;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 5. 引用块（本文核心样式：米白底 + 鎏金边）
+ *    mdnice 用 blockquote，WeMD 用 .multiquote-N
+ * ─────────────────────────────────────────────── */
+#nice blockquote,
+#wemd blockquote,
+#wemd .multiquote-1,
+#wemd .multiquote-2,
+#wemd .multiquote-3 {
+  margin: 18px 0;
+  padding: 14px 16px;
+  background: #faf6ec;
+  border-left: 4px solid #c9a254;
+  border-radius: 0 8px 8px 0;
+  font-style: normal;
+}
+
+#nice blockquote p,
+#wemd blockquote p,
+#wemd .multiquote-1 p,
+#wemd .multiquote-2 p,
+#wemd .multiquote-3 p {
+  margin: 6px 0;
+  font-size: 15px;
+  line-height: 1.8;
+  letter-spacing: 1px;
+  color: #5e594e;
+  text-align: justify;
+}
+
+#nice blockquote strong,
+#wemd blockquote strong,
+#wemd .multiquote-1 strong,
+#wemd .multiquote-2 strong,
+#wemd .multiquote-3 strong {
+  color: #2e4a62;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 6. 列表
+ * ─────────────────────────────────────────────── */
+#nice ul,
+#nice ol,
+#wemd ul,
+#wemd ol {
+  margin: 12px 0;
+  padding-left: 26px;
+}
+
+#nice li,
+#wemd li,
+#wemd li section {
+  margin: 6px 0;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #3f3f3f;
+  text-align: justify;
+}
+
+/* 列表圆点 / 序号染成鎏金 */
+#nice ul li::marker,
+#nice ol li::marker,
+#wemd ul li::marker,
+#wemd ol li::marker {
+  color: #c9a254;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 7. 分隔线：一条两端渐隐的月光
+ * ─────────────────────────────────────────────── */
+#nice hr,
+#wemd hr {
+  margin: 32px 0;
+  border: none;
+  height: 1px;
+  background-image: linear-gradient(
+    to right,
+    rgba(201, 162, 84, 0),
+    rgba(201, 162, 84, 0.75),
+    rgba(201, 162, 84, 0)
+  );
+}
+
+
+/* ───────────────────────────────────────────────
+ * 8. 表格：黛蓝表头 + 米白斑马纹
+ * ─────────────────────────────────────────────── */
+#nice table,
+#wemd table {
+  width: 100%;
+  display: table;
+  border-collapse: collapse;
+  margin: 18px 0;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+}
+
+#nice table tr th,
+#wemd table tr th {
+  background: #2e4a62;
+  color: #ffffff;
+  border: 1px solid #2e4a62;
+  padding: 10px 12px;
+  font-weight: bold;
+  text-align: left;
+}
+
+#nice table tr td,
+#wemd table tr td {
+  background: #ffffff;
+  border: 1px solid #e9ddbc;
+  padding: 10px 12px;
+  color: #4a4640;
+}
+
+#nice table tr:nth-child(even) td,
+#wemd table tr:nth-child(even) td {
+  background: #faf6ec;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 9. 图片与图注
+ * ─────────────────────────────────────────────── */
+#nice img,
+#wemd img {
+  display: block;
+  margin: 20px auto;
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+#nice figure,
+#wemd figure {
+  margin: 20px 0;
+  text-align: center;
+}
+
+#nice figcaption,
+#wemd figcaption {
+  margin-top: 8px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #918b80;
+  text-align: center;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 10. 行内代码与代码块
+ * ─────────────────────────────────────────────── */
+#nice p code,
+#nice li code,
+#wemd p code,
+#wemd li code {
+  color: #a85c32;
+  background: #f7f1e3;
+  padding: 2px 6px;
+  margin: 0 2px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: "Courier New", Consolas, monospace;
+}
+
+#nice pre,
+#wemd pre {
+  margin: 16px 0;
+  padding: 14px 16px;
+  background: #f7f1e3;
+  border-radius: 8px;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+#nice pre code {
+  color: #4a4640;
+  font-size: 13px;
+  font-family: "Courier New", Consolas, monospace;
+}
+
+/* WeMD：语法高亮块不设 color，交给高亮主题 */
+#wemd pre code.hljs {
+  background: transparent;
+  font-size: 13px;
+  font-family: "Courier New", Consolas, monospace;
+}
+
+#wemd pre code:not(.hljs) {
+  color: #4a4640;
+  font-size: 13px;
+  font-family: "Courier New", Consolas, monospace;
+}
+
+
+/* ───────────────────────────────────────────────
+ * 11. 脚注
+ * ─────────────────────────────────────────────── */
+#nice .footnote-word,
+#nice .footnote-ref,
+#wemd .footnote-word,
+#wemd .footnote-ref {
+  color: #96742a;
+  font-weight: bold;
+}
+
+#nice .footnotes-sep,
+#wemd .footnotes-sep {
+  border-top: 1px solid #e9ddbc;
+  margin-top: 32px;
+  padding-top: 16px;
+}
+
+#nice .footnote-item p,
+#wemd .footnote-item p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #918b80;
+}

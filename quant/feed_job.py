@@ -16,6 +16,8 @@ sys.path.insert(0, str(ROOT / "quant"))
 import emdata as em  # noqa: E402
 from scoring import score_stock, is_valid_stock, fmt_stock  # noqa: E402
 from review import sentiment_stage  # noqa: E402
+from factors import FACTORS, compute_factors  # noqa: E402
+from agents import analyze  # noqa: E402
 
 BJ = ZoneInfo("Asia/Shanghai")
 OUT = ROOT / "docs" / "data"
@@ -111,6 +113,25 @@ def main():
                          "stage": stage, "advice": advice,
                          "ladders": {str(n): v[:8] for n, v in sorted(ladders.items(), reverse=True)}}
 
+    # 外围期指（供研判 ctx）
+    a50 = nq = None
+    try:
+        fut2 = em.sina_quotes(["hf_CHA50CFD", "hf_NQ"])
+        for k, tag in [("hf_CHA50CFD", "a50"), ("hf_NQ", "nq")]:
+            v = fut2.get(k)
+            if v and v.get("price") and v.get("prev"):
+                if tag == "a50": a50 = round((v["price"] / v["prev"] - 1) * 100, 2)
+                else: nq = round((v["price"] / v["prev"] - 1) * 100, 2)
+    except Exception:
+        pass
+    prev_zt_map = {}
+    try:
+        for z in em.zt_pool_previous(today):
+            prev_zt_map[str(z["code"])] = z.get("lbc")
+    except Exception:
+        pass
+    ctx = {"prev_zt": prev_zt_map, "zt_premium": premium, "break_rate": break_rate, "a50": a50, "nq": nq}
+
     # 板块（东财 → 同花顺 → 新浪）
     boards, bsrc = [], "offline"
     try:
@@ -131,12 +152,6 @@ def main():
 
     # 候选打分（主板、非ST、价格<20 默认区间）
     by_code = {s["code"]: s for s in snap}
-    prev_zt = {}
-    try:
-        for z in em.zt_pool_previous(today):
-            prev_zt[str(z["code"])] = z.get("lbc")
-    except Exception:
-        pass
     cands = []
     for s in snap:
         if not is_valid_stock(s["code"], s.get("name")):
@@ -146,13 +161,46 @@ def main():
             continue
         if (s["pct"] or 0) < 1 or (s["amount"] or 0) < 8e6 or (s["float_mv"] or 0) < 2e9:
             continue
-        extra = {}
         s2 = dict(s)
         s2["strategies"] = score_stock(s2)
-        if s["code"] in prev_zt:
-            extra["why"] = f"昨{prev_zt[s['code']]}板"
-        cands.append(fmt_stock(s2) | extra)
+        fvals = compute_factors(s2, ctx)
+        if s["code"] in prev_zt_map:
+            fvals["lbc"] = prev_zt_map[s["code"]]
+            s2["why"] = f"昨{prev_zt_map[s['code']]}板"
+        s2["factors"] = fvals
+        cands.append(fmt_stock(s2) | {"factors": fvals})
     cands.sort(key=lambda s: -s["strategies"]["cs"]["score"])
+
+    # 消息命中表（个股名 → 电报条目）
+    news = []
+    try:
+        for n in em.news_cls(15):
+            t = (n.get("title") or "").strip() or (n.get("content") or "").strip()[:40]
+            if not t:
+                continue
+            full = t + (n.get("content") or "")
+            tag = "bad" if any(w in full for w in BAD) else ("good" if any(w in full for w in GOOD) else "mid")
+            news.append({"title": t, "tag": tag})
+    except Exception:
+        pass
+    feed["news"] = news
+    news_hint = {}
+    name2code = {s["name"]: s["code"] for s in snap}
+    for n in news:
+        if n["tag"] == "mid":
+            continue
+        for nm, c in name2code.items():
+            if len(nm) >= 2 and nm in n["title"]:
+                news_hint[c] = {"title": n["title"], "tag": n["tag"]}
+                break
+    feed["news_hint"] = news_hint
+
+    # 多角色研判（TradingAgents 架构，确定性证据链）——给超短分前8名
+    for s in cands[:8]:
+        try:
+            s["agents"] = analyze(s, s.get("factors"), {**ctx, "news_hint": news_hint})
+        except Exception:
+            pass
     feed["candidates"] = cands[:15]
 
     # ETF 行情
@@ -175,20 +223,6 @@ def main():
         feed["etf"] = [{"code": c, "name": n, "groups": g, "reason": w, "price": None, "pct": None}
                        for c, n, g, w in ETF_LIST]
 
-    # 消息面
-    news = []
-    try:
-        for n in em.news_cls(15):
-            t = (n.get("title") or "").strip() or (n.get("content") or "").strip()[:40]
-            if not t:
-                continue
-            full = t + (n.get("content") or "")
-            tag = "bad" if any(w in full for w in BAD) else ("good" if any(w in full for w in GOOD) else "mid")
-            news.append({"title": t, "tag": tag})
-    except Exception:
-        pass
-    feed["news"] = news
-
     # 轮动（5日相对强弱）
     rot = []
     big, small = em.pct5_dual("1.000016", "sh000016"), em.pct5_dual("1.000852", "sh000852")
@@ -200,6 +234,20 @@ def main():
         rot.append({"pair": "价值成长", "a": f"沪深300 {hs:+.1f}%", "b": f"创业板指 {cyb:+.1f}%",
                     "side": "价值占优" if cyb - hs < 0 else "成长占优"})
     feed["rotation"] = rot
+
+    # 因子库 + 溯源
+    feed["factors_registry"] = FACTORS
+    feed["provenance"] = {
+        "snapshot": feed["sources"].get("snapshot", "offline"),
+        "boards": feed["sources"].get("boards", "offline"),
+        "indices": feed["sources"].get("indices", "offline"),
+        "futures": "新浪 hf_ 期指",
+        "news": "财联社电报（akshare stock_info_global_cls）",
+        "zt_pool": "东方财富 push2ex（akshare）",
+        "quotes_etf": "腾讯 qt.gtimg.cn",
+        "formulas": "quant/factors.py + quant/scoring.py v1",
+        "agents_arch": "TradingAgents 架构移植（arXiv 2412.20138）",
+    }
 
     out = ROOT / "docs" / "data" / "feed.json"
     out.write_text(json.dumps(feed, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

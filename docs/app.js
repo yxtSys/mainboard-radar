@@ -103,17 +103,34 @@ async function load() {
 
   $("#candList").innerHTML = (FEED.candidates || []).map(x => {
     const st = x.strategies || {};
+    const ag = x.agents;
+    const agHtml = ag ? `<div class="st-why">🤖 研判：<b style="color:${ag.verdict === "偏多" ? "#ff8a80" : ag.verdict === "偏空" ? "#5fe8a8" : "#ffd479"}">${ag.verdict}</b>（置信 ${ag.confidence}${ag.llm_enhanced ? "+LLM" : ""}）
+      ${Object.entries(ag.roles).map(([k, v]) => `${k}:${v.view}`).join(" · ")}
+      <br>多头：${esc((ag.bull || []).join("；"))}<br>空头：${esc((ag.bear || []).join("；"))}</div>` : "";
     return `<div class="stock-item"><div class="st-top"><span class="st-name">${esc(x.name)}</span><span class="st-code">${x.code}</span>
     <span class="pct ${x.pct >= 0 ? "up" : "down"}">${x.pct > 0 ? "+" : ""}${(x.pct ?? 0).toFixed(2)}%</span>
     <span class="st-price">${x.price ?? "-"}元</span>
     <span class="score">超${st.cs?.score ?? 0} 短${st.short?.score ?? 0} 中${st.mid?.score ?? 0} 长${st.long?.score ?? 0}</span></div>
     <div class="st-why">${esc((st.cs?.why || []).join("；"))}</div>
-    <div class="st-rf">⚠ ${esc(st.cs?.risk || "")}｜失效：${esc(st.cs?.fail || "")}</div></div>`;
+    <div class="st-rf">⚠ ${esc(st.cs?.risk || "")}｜失效：${esc(st.cs?.fail || "")}</div>${agHtml}</div>`;
   }).join("") || '<div class="empty">本时段无符合条件的候选</div>';
 
   renderEtf();
   $("#newsList").innerHTML = (FEED.news || []).map(n =>
     `<div class="news-item"><span class="tag ${n.tag}">${{ good: "利好", bad: "利空", mid: "快讯" }[n.tag]}</span><span class="news-title">${esc(n.title)}</span></div>`).join("");
+
+  // 因子公式表 + 溯源（全部可追究原文）
+  const fr = FEED.factors_registry || [];
+  const pv = FEED.provenance || {};
+  if (!$("#factorBox")) {
+    const det = document.createElement("details");
+    det.className = "card"; det.innerHTML = `<summary style="cursor:pointer"><b>📐 因子库与数据溯源（点开）</b></summary><div id="factorBox"></div><div id="provBox" class="st-rf"></div>`;
+    document.querySelector("main").appendChild(det);
+  }
+  $("#factorBox").innerHTML = `<table style="width:100%;font-size:11.5px;border-collapse:collapse">` +
+    `<tr style="color:var(--sub)"><td style="padding:3px">因子</td><td>公式</td><td>来源</td></tr>` +
+    fr.map(f => `<tr style="border-top:1px solid var(--line)"><td style="padding:3px">${esc(f.name)}</td><td>${esc(f.formula)}</td><td style="color:var(--sub)">${esc(f.source)}</td></tr>`).join("") + `</table>`;
+  $("#provBox").innerHTML = "溯源：" + Object.entries(pv).map(([k, v]) => `${k}=${esc(v)}`).join(" · ");
 }
 function renderEtf() {
   const list = (FEED.etf || []).filter(x => x.groups.includes(etfGroup));
