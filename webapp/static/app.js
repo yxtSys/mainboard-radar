@@ -167,27 +167,29 @@ function typeFilter(items) {
   return items.filter(i => t === "all" || i.type === t || (t === "concept" && i.type === "concept") || (t === "industry" && i.type === "industry"));
 }
 let lastBoardsSig = "";
+function barRows(el, rows, fmt) {
+  const max = Math.max(...rows.map(r => Math.abs(r.v)), 1e-9);
+  el.innerHTML = rows.map((r, i) => `<div class="bar-row" onclick='openBoard({"code":${JSON.stringify(r.code)},"name":${JSON.stringify(r.name)},"type":${JSON.stringify(r.type)}})'>
+    <span class="rank ${i < 3 ? "top" : ""}">${i + 1}</span><span class="btag ${r.up ? "in" : "out"}">${r.label2 || (r.up ? "流入" : "流出")}</span>
+    <span class="bname">${esc(r.name)}</span>
+    <div class="btrack"><div class="bfill ${r.up ? "red" : "green"}" style="width:${Math.max(4, Math.abs(r.v) / max * 100)}%"></div></div>
+    <span class="bval">${fmt(r)}</span></div>`).join("");
+}
 function renderCharts(data) {
   boardsAll = data.items || [];
-  // 数据没变化就不重排泡泡，屏幕保持安静
-  const sig = data.source + "|" + JSON.stringify(boardsAll.map(i => [i.code, i.pct, i.main_in, i.heat]));
-  if (sig === lastBoardsSig && chartPct.nodes.size) return;
+  const sig = data.source + "|" + JSON.stringify(boardsAll.map(i => [i.code, i.pct, i.main_in]));
+  if (sig === lastBoardsSig) return;
   lastBoardsSig = sig;
   const limited = data.source === "zt_pool_fallback" || data.source === "offline";
-  const note = limited ? "板块接口限流中，自动恢复后立即显示（后台每5秒重试）" : "";
-  const mk = chart => {
-    if (chart.mode === "pct") {
-      const withPct = typeFilter(boardsAll.filter(i => i.pct != null));
-      if (withPct.length) chart.setData(withPct.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 13), "");
-      else chart.setData(typeFilter(boardsAll.filter(i => i.heat != null)).sort((a, b) => b.heat - a.heat).slice(0, 13),
-        limited ? "板块涨幅接口限流：当前按昨日涨停行业热度展示（N家涨停），恢复后自动切回涨跌幅" : "");
-    } else {
-      const withFlow = typeFilter(boardsAll.filter(i => i.main_in != null));
-      chart.setData(withFlow.sort((a, b) => Math.abs(b.main_in) - Math.abs(a.main_in)).slice(0, 13),
-        withFlow.length ? "" : "资金流依赖东财接口，限流中，每5秒自动重试");
-    }
-  };
-  mk(chartPct); mk(chartFlow);
+  const withPct = boardsAll.filter(i => i.pct != null).sort((a, b) => b.pct - a.pct).slice(0, 12);
+  barRows($("#barPct"), withPct.map(i => ({ code: i.code, name: i.name, type: i.type, up: i.pct >= 0, v: i.pct })),
+    r => (r.v > 0 ? "+" : "") + r.v.toFixed(1) + "%");
+  if (!withPct.length) $("#barPct").innerHTML = `<div class="empty">${limited ? "板块接口限流中，恢复后自动切换" : "等待数据…"}</div>`;
+  const fl = boardsAll.filter(i => i.main_in != null).sort((a, b) => b.main_in - a.main_in);
+  const fin = fl.slice(0, 10).map(i => ({ code: i.code, name: i.name, type: i.type, up: true, v: i.main_in / 1e8, label2: "流入" }));
+  const fout = fl.slice(-10).reverse().map(i => ({ code: i.code, name: i.name, type: i.type, up: false, v: i.main_in / 1e8, label2: "流出" }));
+  barRows($("#barFlow"), fin.concat(fout), r => (r.v > 0 ? "+" : "-") + Math.abs(r.v).toFixed(1) + "亿");
+  if (!fl.length) $("#barFlow").innerHTML = '<div class="empty">资金流依赖东财接口，限流中，每5秒自动重试</div>';
 }
 
 /* ---------- 数据轮询 ---------- */
@@ -266,13 +268,13 @@ function chipBtns(el, key, storeKey) {
 function stockRow(s) {
   const st = s.strategies?.[curStrat] || { score: 0, why: [], risk: "", fail: "" };
   const starred = PROFILE?.watchlist?.includes(s.code);
-  return `<div class="stock-item" data-code="${s.code}">
+  return `<div class="stock-item" data-code="${s.code}" onclick="openStock('${s.code}')">
     <div class="st-top">
       <button class="star ${starred ? "on" : ""}" onclick="toggleStar('${s.code}',this)">★</button>
       <span class="st-name">${esc(s.name)}</span><span class="st-code">${s.code}</span>
       <span class="pct ${s.pct >= 0 ? "up" : "down"}">${s.pct == null ? "-" : (s.pct > 0 ? "+" : "") + s.pct.toFixed(2) + "%"}</span>
       <span class="st-price">${s.price ?? "-"} 元</span>
-      <span class="score">${{ cs: "超短", short: "短线", mid: "中线", long: "长线" }[curStrat]} ${st.score}</span>
+      <span class="score">${{ cs: "超短", short: "短线", mid: "中线", long: "长线" }[s.strategy || curStrat]} ${st.score}</span>
     </div>
     <div class="st-mid"><span>成交 ${fmtYi(s.amount)}</span><span>换手 ${s.turnover != null ? s.turnover.toFixed(1) + "%" : "-"}</span>
       ${s.main_in != null ? `<span>主力 ${fmtYi(s.main_in)}</span>` : ""}${s.pe ? `<span>PE ${s.pe.toFixed(0)}</span>` : ""}${s.chg60 != null ? `<span>60日 ${s.chg60 > 0 ? "+" : ""}${s.chg60.toFixed(1)}%</span>` : ""}</div>
@@ -281,6 +283,31 @@ function stockRow(s) {
       <a href="javascript:void(0)" onclick="quickAlert('${s.code}',${s.price ?? 0})" style="margin-left:8px">🔔提醒</a></div>
   </div>`;
 }
+/* ---------- 个股深拆 ---------- */
+async function openStock(code) {
+  const el = $("#sd"); el.classList.remove("hidden");
+  el.innerHTML = '<div class="empty">个股拆解加载中…</div>';
+  try {
+    const d = await jget(`/api/stock/${code}`);
+    const ag = d.agents || {};
+    el.innerHTML = `<div class="dw-head"><button class="ghost-btn" onclick="document.getElementById('sd').classList.add('hidden')">← 返回</button>
+      <h3>${esc(d.name)} ${d.code}</h3><span class="meta">${d.price ?? "-"}元 ${d.pct > 0 ? "+" : ""}${(d.pct ?? 0).toFixed(2)}%</span></div>
+      <div class="card"><h4>主策略：${{ cs: "超短", short: "短线", mid: "中线", long: "长线" }[d.strategy]} ${d.strategy_score}分</h4>
+      <div class="st-why">🤖 ${ag.verdict || "-"}（置信 ${ag.confidence ?? "-"}）｜${Object.entries(ag.roles || {}).map(([k, v]) => `${k}:${v.view}`).join(" · ")}</div>
+      <div class="st-rf">因子：${esc(JSON.stringify(d.factors))}</div></div>
+      <div class="card"><h4>操作（量化推导，T分 ${d.ops.t_score}/100 · 拿住分 ${d.ops.hold_score}/100）</h4>
+      <div class="st-why"><b>${esc(d.ops.style)}</b><br>${esc(d.ops.how)}</div>
+      <div class="st-mid"><span>${esc(d.ops.buy)}</span><br><span>${esc(d.ops.stop)}</span><br><span>仓位：${esc(d.ops.position)}</span></div>
+      <div class="st-rf">锚定物：${esc((d.ops.anchors || []).join(" / "))}</div></div>
+      ${d.zygc && d.zygc.length ? `<div class="card"><h4>业务拆解（${esc((d.zygc_source || []).join("+"))}）</h4>
+      <table style="width:100%;font-size:12px;border-collapse:collapse"><tr style="color:var(--sub)"><td>构成</td><td>收入(亿)</td><td>占比%</td><td>毛利率%</td></tr>
+      ${d.zygc.map(z => `<tr style="border-top:1px solid var(--line)"><td style="padding:3px">${esc(z.构成)}</td><td>${z["收入(亿)"] ?? "-"}</td><td>${z["占比%"] ?? "-"}</td><td>${z["毛利率%"] ?? "-"}</td></tr>`).join("")}</table></div>` : `<div class="card"><h4>业务拆解</h4><div class="note">F10主营构成暂缺源，稍后重试</div></div>`}
+      ${d.profile && d.profile["简介"] ? `<div class="card"><h4>公司资料（${esc((d.zygc_source || ["巨潮资讯"]).join("+"))}）</h4><div class="st-why">${esc(d.profile["简介"] || "")}</div><div class="st-rf">主营：${esc(d.profile["主要产品及业务"] || "-")}</div></div>` : ""}
+      <p class="foot">来源可溯：${esc(JSON.stringify(d.source))}</p>`;
+  } catch (e) { el.innerHTML = `<div class="empty">失败：${esc(e.message).slice(0, 100)}</div>`; }
+}
+
+/* ---------- 个股深拆结束 ---------- */
 async function openBoard(it) {
   curStrat = "cs"; curBoard = it.code;
   $("#drawer").classList.remove("hidden");
@@ -299,8 +326,13 @@ async function openBoard(it) {
 }
 function renderBoardList() {
   const d = curBoard ? boardCache[curBoard] : null; if (!d) return;
-  const arr = [...d.stocks].sort((a, b) => (b.strategies?.[curStrat]?.score || 0) - (a.strategies?.[curStrat]?.score || 0));
-  $("#dwList").innerHTML = arr.map(stockRow).join("") || '<div class="empty">没有符合你价格区间的股票，试试放宽区间</div>';
+  // 只显示主策略与当前标签一致的票（唯一分类），空则回退全部
+  const same = [...d.stocks].filter(x => x.strategy === curStrat);
+  const arr = (same.length ? same : [...d.stocks]).sort((a, b) =>
+    (b.strategies?.[curStrat]?.score || 0) - (a.strategies?.[curStrat]?.score || 0));
+  const name = { cs: "超短", short: "短线", mid: "中线", long: "长线" }[curStrat];
+  $("#dwList").innerHTML = (same.length ? arr : arr).map(stockRow).join("")
+    || `<div class="empty">当前「${name}」没有符合你价格区间的票，切其他周期或放宽区间</div>`;
 }
 $("#stratTabs").addEventListener("click", e => {
   if (e.target.dataset.s) {
