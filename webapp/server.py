@@ -17,6 +17,7 @@ warnings.filterwarnings("ignore")
 ROOT = Path(__file__).resolve().parent.parent  # 工作区根目录（quant/ 的上一级）
 sys.path.insert(0, str(ROOT / "quant"))
 import emdata as em  # noqa: E402
+from scoring import score_stock, is_valid_stock, fmt_stock  # noqa: E402,F401
 
 from fastapi import FastAPI, HTTPException, Query  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402

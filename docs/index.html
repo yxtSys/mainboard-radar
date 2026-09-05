@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主板雷达 · 关机简版（5分钟级）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="hd-row">
+    <div class="hd-date"><b id="hdDate">--</b><span>主板雷达 · 5分钟级静态版（电脑关机时看这个）</span></div>
+    <div class="hd-idx"><span id="hdIdx"></span><span class="bigtime" id="hdGen">--</span></div>
+  </div>
+  <div id="meta" class="ticker">数据加载中…</div>
+</header>
+<main>
+  <section class="charts">
+    <div class="chart-card"><h3>板块涨跌幅</h3><div class="sub">泡泡=涨跌幅 · 红涨绿跌 · 静态快照</div><canvas id="cvPct"></canvas></div>
+    <div class="chart-card"><h3>板块主力资金</h3><div class="sub">泡泡=净流入/流出额 · 红入绿出</div><canvas id="cvFlow"></canvas></div>
+  </section>
+  <section class="card"><div id="envBox" class="st-why"></div></section>
+  <section class="card"><div class="chart-head"><h3>关注池 Top（主板 · 非ST · 2~20元）</h3></div>
+    <div class="stock-list" id="candList"><div class="empty">加载中…</div></div></section>
+  <section class="card"><div class="chart-head"><h3>ETF 策略池</h3>
+    <div class="tabs" id="etfTabs"><button data-g="cs" class="on">超短</button><button data-g="short">短线</button><button data-g="mid">中线</button><button data-g="long">长线</button></div></div>
+    <div id="etfList" class="stock-list"></div></section>
+  <section class="card"><div class="chart-head"><h3>消息面 · 财联社电报</h3></div><div id="newsList" class="news-list"></div></section>
+  <p class="foot">静态快照每5分钟由云端自动更新 · 实时10秒级请访问本地完整版 · 量化辅助信号，不构成投资建议</p>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
