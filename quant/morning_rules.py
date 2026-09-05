@@ -35,6 +35,10 @@ def morning_signals(zt_pool, snap_by_code):
     if not pool:
         return [], "涨停池缺源，无法判定锚定信号（数据缺失，不编造）"
     max_lbc = max(p["lbc"] for p in pool)
+    # 小弟梯队：同行业其他涨停股（龙头的小弟=板块梯队）
+    ind_mates = {}
+    for p in pool:
+        ind_mates.setdefault(p["ind"], []).append(f"{p['name']}({p['lbc']}板)")
     signals, seen = [], set()
     for p in pool:
         gap = p["gap"]
@@ -61,6 +65,15 @@ def morning_signals(zt_pool, snap_by_code):
         p["role"] = ("空间龙头" if p["lbc"] == max_lbc else
                      "中军" if p["amt_yi"] >= 10 else
                      "卡位" if p["lbc"] == 2 else "补涨")
+        mates = [m for m in ind_mates.get(p["ind"], []) if not m.startswith(str(p["name"]))]
+        p["xiao_di"] = "、".join(mates[:3]) or "同板块无涨停小弟（孤军，降级处理）"
+        role_txt = {
+            "空间龙头": "全场最高板=情绪总锚：它强则板块续，它断板→全网高低切（观察哨第一名）",
+            "中军": "板块最大成交载体，跟随资金的主池：沿分时均线持有，不做T不折腾",
+            "卡位": "进度快于龙头的接力锚：竞价高开1.5~3.5%跟，低开=卡位失败不碰",
+            "补涨": "集群确认后的低位补涨：只低吸不追高，龙头断板第一个卖它",
+        }[p["role"]]
+        p["jie_du"] = role_txt
         key = p["code"]
         if key not in seen:
             seen.add(key)
