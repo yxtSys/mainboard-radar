@@ -39,6 +39,106 @@ def sentiment_stage(zt_n, dt_n, max_lbc, break_rate, premium):
     return "修复/震荡期", "半仓试错，聚焦1-2个主流板块，不做杂毛"
 
 
+
+
+# ---------- 龙头战法作战卡（情绪周期 + 角色识别 + 高低切 + 浓缩推荐） ----------
+MAIN = ("600", "601", "603", "605", "000", "001", "002", "003")
+ETF_MAP = [  # 板块关键词 → 短线ETF
+    ("半导体|芯片|存储|封测", "512480", "半导体ETF"),
+    ("白酒|食品|饮料", "512690", "酒ETF"),
+    ("养殖|猪|饲料|种业", "159865", "养殖ETF"),
+    ("军工|航天|国防", "512660", "军工ETF"),
+    ("有色|铜|铝|稀土", "512400", "有色ETF"),
+    ("银行", "512800", "银行ETF"),
+    ("券商|证券", "512000", "券商ETF"),
+    ("医疗|医药|创新药", "512170", "医疗ETF"),
+    ("光伏|新能源", "515790", "光伏ETF"),
+    ("新能源车|锂电", "515030", "新能源车ETF"),
+    ("黄金|贵金属", "518880", "黄金ETF"),
+    ("游戏|传媒|短剧", "159869", "游戏动漫ETF"),
+]
+ETF_MID = [("512800", "银行ETF", "权重防御/跷跷板大盘侧"), ("512100", "中证1000ETF", "小盘题材侧"),
+           ("510880", "红利ETF", "高股息底仓"), ("510300", "沪深300ETF", "核心宽基")]
+
+
+def roles_of(zt, snap_by_code):
+    """涨停池角色识别：空间龙头(最高板)/中军(最大成交)/卡位(昨首板今连板)/补涨集群。"""
+    if not zt:
+        return {"龙头": "-", "中军": "-", "卡位": "-", "补涨": "-"}
+    lb = [z for z in zt if str(z.get("lbc", "")).isdigit()]
+    max_lbc = max((int(z["lbc"]) for z in lb), default=1)
+    lead = [z for z in lb if int(z["lbc"]) == max_lbc]
+    zhongjun = sorted(zt, key=lambda z: -(z.get("amount") or 0))[0] if zt else None
+    kawei = [z for z in lb if int(z["lbc"]) == 2][:3]
+    dipoor = [z for z in zt if int(z.get("lbc") or 1) == 1][:5]
+    fmt = lambda z: (f"{z['name']}"
+                     f"(主板<20✓)" if str(z.get("code", "")).startswith(MAIN) and (snap_by_code.get(str(z.get("code")), {}).get("price") or 99) < 20
+                     else f"{z['name']}(价格超限)") if z else "-"
+    return {"龙头": "、".join(fmt(z) for z in lead),
+            "中军": fmt(zhongjun) if zhongjun else "-",
+            "卡位(昨首板今2板)": "、".join(fmt(z) for z in kawei) or "-",
+            "补涨集群(今首板)": "、".join(fmt(z) for z in dipoor) or "-"}
+
+
+def ops_card(zt, dt_, break_rate, premium, stage, advice, max_lbc, snap, top_in, movers):
+    """浓缩作战卡：短线打法 / 中线推荐 / ETF短中期。全部主板+价格<20 过滤（股票）。"""
+    L = ["", "## 🎯 明日作战卡（浓缩版）"]
+    by_code = {s["code"]: s for s in snap}
+    roles = roles_of(zt, by_code)
+    L.append(f"- 情绪定位：**{stage}**｜涨停{len(zt)} 炸板率{break_rate}% 昨溢价{premium:+.2f}%｜最高板{max_lbc}")
+    L.append(f"- 角色识别：龙头 **{roles['龙头']}**｜中军 **{roles['中军']}**｜卡位 {roles['卡位(昨首板今2板)']}｜补涨 {roles['补涨集群(今首板)']}")
+    # 短线打法（按情绪周期给锚定动作）
+    if "高潮" in stage:
+        play = "只做龙一，不追跟风；锚定：龙一分时均价线，破线减半；分歧日（首阴/炸板）低吸而非追高"
+    elif "发酵" in stage:
+        play = "主攻卡位+中军：卡位股竞价高开1.5~3.5%可上，中军沿分时均线持有；买在分歧（首次开板回封）"
+    elif "退潮" in stage:
+        play = f"高低切：高位板({max_lbc}板)兑现风险大，切低位首板/二板新题材；只做龙头首阴反包或空仓等冰点"
+    elif "冰点" in stage:
+        play = "空仓等右侧，只打首板试错；冰点次日首个涨停潮=新周期信号"
+    else:
+        play = "震荡试错：半仓跟主流板块，锚定中军分时均线"
+    L.append(f"- 短线锚定打法：{play}｜铁律：买在分歧、卖在一致")
+    # 中线推荐（主板<20 + 中线分）
+    mids = []
+    for s in snap:
+        c = str(s.get("code", ""))
+        if not c.startswith(MAIN) or "ST" in s.get("name", ""):
+            continue
+        p = s.get("price")
+        if p is None or not (2 <= p <= 20) or (s["pct"] or 0) > 3:
+            continue
+        chg60, pe, pb = s.get("chg60"), s.get("pe"), s.get("pb")
+        mi = s.get("main_in") or 0
+        sc = 0
+        if chg60 is not None and -30 <= chg60 <= -5: sc += 35
+        if mi > 0: sc += 20
+        if pe is not None and 0 < pe < 40: sc += 15
+        if pb is not None and 0 < pb < 2: sc += 10
+        if sc >= 45:
+            mids.append((sc, s["name"], c, p, chg60, (s["amount"] or 0) / 1e8))
+    mids.sort(reverse=True)
+    L.append("- 中线推荐（主板<20，超跌+有承接，量化区间分批）：")
+    for sc, nm, c, pr, c60, am in mids[:5]:
+        buy1, buy2 = round(pr * 0.97, 2), round(pr * 0.94, 2)
+        L.append(f"  · {nm}({c}) {pr:.2f}元 60日{c60:+.0f}% 成交{am:.1f}亿 → 区间 {buy1}~{buy2} 分2批，破{round(pr*0.9,2)}止损（评分{sc}）")
+    if not mids:
+        L.append("  · 本日无达标标的（条件：超跌+主力承接+低估值）")
+    # ETF 短期/中期
+    kw_text = " ".join(f"{z.get('industry','')}" for z in zt) + " " + " ".join(str(b) for b in top_in) + " " + " ".join(str(m) for m in movers)
+    etf_short, seen = [], set()
+    import re as _re
+    for pat, code, name in ETF_MAP:
+        if _re.search(pat, kw_text) and code not in seen:
+            etf_short.append(f"{name}({code})"); seen.add(code)
+        if len(etf_short) >= 3:
+            break
+    L.append(f"- ETF短期（跟主线情绪，T+0思路≤3天）：{'、'.join(etf_short) if etf_short else '今日板块分散，无集中方向'}"
+             f" → 操作：主线发酵日开盘买、高潮日兑现，仓位随情绪阶段（{stage}={ {'冰点期':'1成试','退潮期':'2成','修复/震荡期':'3成','发酵期':'5成','高潮期':'4成持有'}[stage] }）")
+    big_small = "大盘/权重" if (roles and False) else "按跷跷板"
+    L.append(f"- ETF中期（3~10周）：{ETF_MID[0][1]}({ETF_MID[0][0]}) {ETF_MID[0][2]} / {ETF_MID[2][1]}({ETF_MID[2][0]}) {ETF_MID[2][2]} → 周定投+偏离止盈，方向跟随大小盘轮动（详见上方轮动判断）")
+    return L
+
 def main():
     today = dt.date.today().strftime("%Y%m%d")
     if not em.is_trade_date(today):
@@ -161,6 +261,15 @@ def main():
           f"- 情绪处于{stage}，{advice}",
           "- 明早 9:27 竞价简报重点核对：①昨日涨停溢价是否延续；②今日净流入 TOP 板块是否竞价高开；③A50/纳指期货方向",
           "- 提醒：复盘为量化辅助信号，不构成投资建议。"]
+
+    # 🎯 明日作战卡（龙头战法浓缩）
+    max_lbc_card = max([int(z.get("lbc") or 1) for z in zt] or [0]) if zt else 0
+    try:
+        L += ops_card(zt, dt_, break_rate, premium or 0, stage, advice, max_lbc_card, snap, top_in, movers)
+    except Exception as e:
+        L.append("")
+        L.append("## 🎯 明日作战卡")
+        L.append(f"- 生成失败: {e}")
     text = "\n".join(x for x in L if x != "")
     print(text)
     em.save(f"{today}_review.md", text)
