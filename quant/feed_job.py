@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "quant"))
 import emdata as em  # noqa: E402
-from scoring import score_stock, is_valid_stock, fmt_stock  # noqa: E402
+from scoring import score_stock, is_valid_stock, fmt_stock, primary_strategy  # noqa: E402
 from review import sentiment_stage  # noqa: E402
 from factors import FACTORS, compute_factors  # noqa: E402
 from agents import analyze  # noqa: E402
