@@ -282,8 +282,17 @@ def main():
         "agents_arch": "TradingAgents 架构移植（arXiv 2412.20138）",
     }
 
+    def _clean(v):
+        if isinstance(v, dict):
+            return {k: _clean(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [_clean(x) for x in v]
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            return None
+        return v
+
     out = ROOT / "docs" / "data" / "feed.json"
-    out.write_text(json.dumps(feed, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    out.write_text(json.dumps(_clean(feed), ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
     print(f"feed.json 写入完成：{out}，{out.stat().st_size // 1024}KB，来源 {feed['sources']}")
 
 
