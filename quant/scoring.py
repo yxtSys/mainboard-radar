@@ -91,9 +91,32 @@ def score_stock(s):
     return res
 
 
+def primary_strategy(strategies, s):
+    """唯一主策略分类（对外只暴露一个标签，四分仅内部排序）。
+    门槛硬约束：不满足该类资格的分数打 2.5 折，防止跨类。"""
+    pct = s.get("pct") or 0
+    amt = (s.get("amount") or 0) / 1e8
+    mv = (s.get("float_mv") or 0) / 1e8
+    pe, pb, chg60 = s.get("pe"), s.get("pb"), s.get("chg60")
+    g = {
+        "cs": 1.0 if (pct >= 5 or pct >= 8.5) else 0.4,
+        "short": 1.0 if (2 <= pct < 8.5 and amt >= 1) else 0.4,
+        "mid": 1.0 if ((chg60 is not None and chg60 <= -5) or (mi_ok(s) and -1 <= pct <= 1)) else 0.4,
+        "long": 1.0 if (mv >= 200 and ((pe is not None and 0 < pe < 25) or (pb is not None and 0 < pb < 1.5))) else 0.25,
+    }
+    ranked = sorted(strategies.items(), key=lambda kv: kv[1]["score"] * g[kv[0]], reverse=True)
+    best = ranked[0]
+    return {"strategy": best[0], "score": round(best[1]["score"] * g[best[0]], 1)}
+
+
+def mi_ok(s):
+    return (s.get("main_in") or 0) > 0
+
+
 def fmt_stock(s):
     return {"code": s["code"], "name": s["name"], "price": s.get("price"),
             "pct": s.get("pct"), "amount": s.get("amount"), "turnover": s.get("turnover"),
             "main_in": s.get("main_in"), "float_mv": s.get("float_mv"),
             "pe": s.get("pe"), "pb": s.get("pb"), "chg60": s.get("chg60"),
+            "strategy": s.get("strategy"),
             "strategies": s.get("strategies") or score_stock(s)}
