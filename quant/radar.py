@@ -316,6 +316,7 @@ def main():
             L.append("|---|---|---|---|---|---|")
             for g in signals:
                 L.append(f"| {g['rules']} | {g['role']} | {g['name']} {g['code']} | {g['gap']:+.1f}% | {g['price']} | 回踩竞价价买，止损-5% |")
+            L.append(f"| ↳解读 | {g['ind']}梯队：{g.get('xiao_di','-')} | {g.get('jie_du','')} |||")
         else:
             L.append("- **今日无合格信号，建议空仓**")
         L.append("")
