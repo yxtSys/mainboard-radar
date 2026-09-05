@@ -77,5 +77,6 @@ li{{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);bord
 .k{{color:#8a8a9a;flex:0 0 auto}}
 .v{{text-align:right}}
 b{{font-weight:700}}
+</style>
 {body}
 </style></div></body></html>"""
