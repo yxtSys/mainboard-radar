@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 ROOT = Path(__file__).resolve().parent.parent  # 工作区根目录（quant/ 的上一级）
 sys.path.insert(0, str(ROOT / "quant"))
 import emdata as em  # noqa: E402
-from scoring import score_stock, is_valid_stock, fmt_stock  # noqa: E402,F401
+from scoring import score_stock, is_valid_stock, fmt_stock, primary_strategy  # noqa: E402,F401
 
 from fastapi import FastAPI, HTTPException, Query  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
@@ -301,6 +301,7 @@ def board_detail(code, pmin, pmax):
             if p is None or not (pmin <= p <= pmax) or p < 2:
                 continue
             s["strategies"] = score_stock(s)
+            s["strategy"] = primary_strategy(s["strategies"], s)["strategy"]
             out.append(s)
         out.sort(key=lambda s: -s["strategies"]["cs"]["score"])
         return {"limited": limited, "note": note, "stocks": [fmt_stock(s) for s in out[:40]]}
@@ -569,6 +570,71 @@ def news():
     with LOCK:
         NEWS_CACHE.update({"at": time.time(), "items": items})
     return {"updated": now_s(), "items": items}
+
+
+@app.get("/api/stock/{code}")
+def stock_detail(code: str):
+    """个股深拆：公司资料 + 主营业务构成 + 多角色研判 + 操作风格建议（拿住 vs 做T）。"""
+    snap = {s["code"]: s for s in (CACHE.get("snapshot") or [])}
+    s = snap.get(code)
+    if not s:
+        raise HTTPException(404, "快照中无此股（可能停牌/非主板）")
+    profile, zygc, zsrc = {}, [], []
+    sym = ("SH" if code[0] == "6" else "SZ") + code
+    try:
+        import akshare as ak
+        try:
+            pf = ak.stock_profile_cninfo(symbol=sym)
+            if pf is not None and len(pf):
+                row = pf.iloc[0]
+                profile = {k: str(row[k]) for k in ("公司名称", "英文名称", "简介", "主要产品及业务", "所属行业", "成立日期") if k in pf.columns}
+                zsrc.append("巨潮资讯")
+        except Exception:
+            pass
+        try:
+            df = ak.stock_zygc_em(symbol=sym)
+            if df is not None and len(df):
+                latest = df["分期报告日期"].max()
+                sub = df[df["分期报告日期"] == latest].head(12)
+                zygc = [{"构成": str(r["主营构成"]), "收入(亿)": round(float(r["主营收入"]) / 1e8, 2) if r["主营收入"] == r["主营收入"] else None,
+                         "占比%": round(float(r["收入比例"]) * 100, 1) if r["收入比例"] == r["收入比例"] else None,
+                         "毛利率%": round(float(r["毛利率"]) * 100, 1) if r.get("毛利率") is not None and r["毛利率"] == r["毛利率"] else None}
+                        for _, r in sub.iterrows()]
+                zsrc.append("东方财富数据中心(F10主营构成)")
+        except Exception:
+            pass
+    except Exception:
+        pass
+    strategies = score_stock(s)
+    strategy = primary_strategy(strategies, s)
+    factors = compute_factors(s, {})
+    agents_res = analyze(s, factors, {})
+    # —— 量化操作建议：全部由因子推导，每个数字可复算 ——
+    t_score = int(min(100, to * 4 + abs(pct or 0) * 5 + (min(amt, 20) if amt else 0)))          # 做T适合度
+    hold_score = int(min(100, (30 if (chg60 is not None and chg60 > -5) else 10) + (25 if mi > 0 else 5) + strategy["score"] * 0.4))  # 拿住适合度
+    price = s.get("price") or 0
+    lvl = {"buy1": round(price * 0.98, 2), "buy2": round(price * 0.96, 2),
+           "reduce1": round(price * 1.03, 2), "reduce2": round(price * 1.05, 2),
+           "stop": round(price * 0.95, 2)}
+    pos = "全仓（用户自定）"
+    if t_score >= 70:
+        style, how = "适合做T/波段（量化T分 %d/100）" % t_score, f"锚1=竞价价(9:25撮合价)：回踩不破低吸；锚2=分时均价线：线上持有线下停T；冲高3~5%（{lvl['reduce1']}~{lvl['reduce2']}）减一份"
+    elif t_score >= 45:
+        style, how = "底仓拿住 + 2~3成做T（T分 %d/100）" % t_score, "锚=分时均价线与昨收价之间高抛低吸；破均价线当日停T"
+    else:
+        style, how = "适合拿住（T分 %d/100，做T磨损大于收益）" % t_score, "锚=量化买入区间：分批于%s/%s，跌破%s止损（-5%纪律）" % (lvl["buy1"], lvl["buy2"], lvl["stop"])
+    ops = {"t_score": t_score, "hold_score": hold_score, "levels": lvl, "position": pos,
+           "style": style, "how": how,
+           "anchors": ["竞价价(9:25撮合)", "分时均价线", "板块领涨股(锚定龙头不动手弱跟风)",
+                       ("A50期指方向",) if a50 is not None else ("大盘环境分",)],
+           "buy": f"买1 {lvl['buy1']}（回踩2%）；买2 {lvl['buy2']}（深回踩4%）；突破减仓位 {lvl['reduce1']} 不追",
+           "stop": f"止损 {lvl['stop']}（-5%硬纪律）；跌破竞价价且反抽不过均价线先减半"}
+    return {"code": code, "name": s["name"], "price": s.get("price"), "pct": s.get("pct"),
+            "strategy": strategy["strategy"], "strategy_score": strategy["score"],
+            "strategies": strategies, "factors": factors, "agents": agents_res,
+            "profile": profile, "zygc": zygc, "zygc_source": zsrc,
+            "ops": ops, "float_yi": round(mv, 1), "chg60": chg60,
+            "source": {"行情": "东财/新浪快照", "公司资料": zsrc or "未取到", "研判": "quant/agents.py 规则链+因子数值"}}
 
 
 app.mount("/", StaticFiles(directory=str(ROOT / "webapp" / "static"), html=True))
