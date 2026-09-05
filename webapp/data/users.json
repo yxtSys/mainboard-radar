@@ -1,0 +1,23 @@
+{
+ "涛哥": {
+  "pin": "8800",
+  "pmin": 0.0,
+  "pmax": 20.0,
+  "watchlist": [],
+  "alerts": []
+ },
+ "牛哥": {
+  "pin": "2200",
+  "pmin": 0,
+  "pmax": 20,
+  "watchlist": [],
+  "alerts": []
+ },
+ "医佬": {
+  "pin": "3300",
+  "pmin": 0,
+  "pmax": 20,
+  "watchlist": [],
+  "alerts": []
+ }
+}

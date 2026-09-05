@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>主板雷达 · 概念与资金气泡</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 登录门 -->
+<div id="login" class="login hidden">
+  <div class="login-card">
+    <h3>🀄 主板雷达</h3>
+    <p class="note">仅限 3 位白名单用户，登录后全部推荐自动按你的价格区间过滤</p>
+    <label>昵称 <input id="lgName" list="nameList" placeholder="点选或输入昵称"></label>
+    <datalist id="nameList"><option>涛哥</option><option>牛哥</option><option>医佬</option></datalist>
+    <label>口令 <input id="lgPin" type="password" inputmode="numeric" maxlength="6" placeholder="4位数字"></label>
+    <button id="lgGo" class="primary">进入</button>
+    <div id="lgMsg" class="note"></div>
+  </div>
+</div>
+
+<header>
+  <div class="hd-row">
+    <div class="hd-date"><b id="hdDate">--月--日</b><span>板块资金气泡 · 主板雷达</span></div>
+    <div class="hd-idx"><span id="hdIdx">上证指数 --</span><span class="bigtime" id="hdTime">--:--</span></div>
+    <div class="hd-right">
+      <span id="statusDot" class="dot"></span><span id="statusTxt">初始化</span>
+      <button id="btnMe" class="ghost-btn">我的</button>
+    </div>
+  </div>
+  <div id="ticker" class="ticker"></div>
+  <div id="alertBar" class="alert-bar hidden"></div>
+</header>
+
+<main>
+  <div id="intro" class="card hidden"><b>三步开始：</b>① 在泡泡图点一个感兴趣的方向 → ② 切「超短/短线/中线/长线」看符合你价位的票 → ③ 点 ★ 收藏、点 🔔 设到价提醒；ETF 单独在下方策略池看。</div>
+  <section class="charts" id="chartsWrap">
+    <div class="chart-card">
+      <div class="chart-head">
+        <h3>概念 / 行业涨跌幅</h3>
+        <div class="chips" id="typeChips1"></div>
+      </div>
+      <div class="sub">泡泡大小=涨跌幅度 · <span class="lg-red">■</span>上涨 <span class="lg-green">■</span>下跌 · 点击看该方向能买的票</div>
+      <canvas id="cvPct"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head">
+        <h3>概念 / 行业主力资金</h3>
+        <div class="chips" id="typeChips2"></div>
+      </div>
+      <div class="sub">泡泡大小=净流入/流出额 · <span class="lg-red">■</span>净流入 <span class="lg-green">■</span>净流出（东财主力口径，L2未接入）</div>
+      <canvas id="cvFlow"></canvas>
+    </div>
+  </section>
+
+  <section class="card" id="newsCard">
+    <div class="chart-head"><h3>消息面 · 财联社电报</h3><span class="meta" id="newsMeta"></span></div>
+    <div id="newsList" class="news-list"><div class="empty">加载中…</div></div>
+  </section>
+
+  <section class="card" id="etfCard">
+    <div class="chart-head">
+      <h3>ETF 策略池（无板块限制）</h3>
+      <div class="tabs" id="etfTabs">
+        <button data-g="cs" class="on">超短</button><button data-g="short">短线</button>
+        <button data-g="mid">中线</button><button data-g="long">长线</button>
+      </div>
+    </div>
+    <div id="etfList" class="stock-list"><div class="empty">加载中…</div></div>
+  </section>
+
+  <p class="foot">数据：东财/新浪/腾讯公开接口，5秒级缓存；主力资金为东财口径、非Level-2。仅供 3 人小范围研究参考，不构成投资建议。</p>
+</main>
+
+<!-- 概念详情抽屉 -->
+<div id="drawer" class="drawer hidden">
+  <div class="dw-head">
+    <button id="dwClose" class="ghost-btn">← 返回</button>
+    <h3 id="dwTitle">板块</h3>
+    <span id="dwMeta" class="meta"></span>
+  </div>
+  <div class="tabs" id="stratTabs">
+    <button data-s="cs" class="on">超短</button><button data-s="short">短线</button>
+    <button data-s="mid">中线</button><button data-s="long">长线</button>
+  </div>
+  <div id="dwNote" class="note"></div>
+  <div id="dwList" class="stock-list"></div>
+</div>
+
+<!-- 我的 抽屉 -->
+<div id="me" class="drawer hidden">
+  <div class="dw-head">
+    <button id="meClose" class="ghost-btn">← 返回</button>
+    <h3>我的设定</h3>
+  </div>
+  <div class="card">
+    <label>昵称 <input id="pfName" placeholder="如 老板"></label>
+    <label>口令(4位) <input id="pfPin" maxlength="6" placeholder="首次输入即注册"></label>
+    <label>可买价格区间（元）
+      <div class="range-row">
+        <input id="pfMin" type="number" step="0.1" min="0"> ~
+        <input id="pfMax" type="number" step="0.1" min="0"> <span class="meta">如 0 ~ 20</span>
+      </div>
+    </label>
+    <button id="pfSave" class="primary">保存设定</button>
+    <button id="pfLogout" class="ghost-btn" style="width:100%;margin-top:8px">退出登录 / 切换账号</button>
+    <div id="pfMsg" class="note"></div>
+  </div>
+  <div class="card">
+    <h4>自选股</h4>
+    <div id="meWatch" class="stock-list"></div>
+  </div>
+  <div class="card">
+    <h4>价格提醒（盘中自动检测）</h4>
+    <div id="meAlerts" class="note"></div>
+    <div class="range-row">
+      <input id="alCode" placeholder="代码如 603123">
+      <input id="alPrice" type="number" step="0.01" placeholder="目标价">
+      <select id="alDir"><option value="above">≥ 触发</option><option value="below">≤ 触发</option></select>
+      <button id="alAdd" class="ghost-btn">加提醒</button>
+    </div>
+  </div>
+</div>
+
+<!-- 悬浮快捷入口 -->
+<button id="fab" title="快捷入口">⚡</button>
+<div id="fabPanel" class="fab-panel hidden">
+  <div class="fab-row"><b id="fabIdx">…</b></div>
+  <button onclick="jump('#chartsWrap')">📊 泡泡图</button>
+  <button onclick="jump('#etfCard')">🧺 ETF池</button>
+  <button onclick="openMe()">⚙️ 我的设定</button>
+  <button onclick="top.location.reload()">🔄 立即刷新</button>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>
