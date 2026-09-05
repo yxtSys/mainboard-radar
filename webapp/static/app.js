@@ -514,8 +514,6 @@ $("#pfLogout").onclick = () => {
 $("#intro").onclick = () => $("#intro").classList.add("hidden");
 
 /* ---------- 启动 ---------- */
-chartPct = new Bubbles($("#cvPct"), "pct");
-chartFlow = new Bubbles($("#cvFlow"), "flow");
 chipBtns($("#typeChips1"), "pct", "boardType");
 chipBtns($("#typeChips2"), "flow", "boardType");
 pollStatus(); pollIndices(); pollBoards(); pollEtf(); pollNews();
