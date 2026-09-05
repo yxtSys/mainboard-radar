@@ -94,7 +94,19 @@ def _snapshot_sina():
             break
         rows.extend(data)
         if len(data) < 100:
-            break
+            # 短页可能是网络抖动截断，重试一次确认真到底
+            time.sleep(1.2)
+            p2 = {**p, "page": page}
+            try:
+                data2 = requests.get(url, params=p2, timeout=15, headers={
+                    "User-Agent": H["User-Agent"], "Referer": "https://finance.sina.com.cn"}).json()
+            except Exception:
+                data2 = []
+            if not data2:
+                break
+            rows.extend(data2)
+            if len(data2) < 100:
+                break
         page += 1
         time.sleep(0.45)
     return [{"code": x.get("code"), "name": x.get("name"),
