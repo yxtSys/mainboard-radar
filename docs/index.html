@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>主板雷达 · 关机简版（5分钟级）</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 <header>
@@ -28,6 +31,10 @@
   <section class="card"><div class="chart-head"><h3>消息面 · 财联社电报</h3></div><div id="newsList" class="news-list"></div></section>
   <p class="foot">静态快照每5分钟由云端自动更新 · 实时10秒级请访问本地完整版 · 量化辅助信号，不构成投资建议</p>
 </main>
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+window._pwaInstalled = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+</script>
 <script src="app.js"></script>
 </body>
 </html>
