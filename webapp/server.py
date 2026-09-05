@@ -477,8 +477,14 @@ def boards():
 
 
 @app.get("/api/board/{code}")
-def board(code: str, pmin: float = 0, pmax: float = 10000):
-    return board_detail(code, pmin, pmax)
+def board(code: str, pmin: float = 0, pmax: float = 10000, mode: str = ""):
+    d = board_detail(code, pmin, pmax)
+    if mode in ("cs", "short", "mid", "long"):
+        same = [s for s in d["stocks"] if s.get("strategy") == mode]
+        if same:
+            d["stocks"] = same
+            d["mode_filtered"] = True
+    return d
 
 
 @app.get("/api/etf")
@@ -507,7 +513,9 @@ def profile_upsert(name: str = Query(...), pin: str = Query(...),
 def profile_get(name: str = Query(...), pin: str = Query(...)):
     prof = auth(name, pin)
     return {"name": name, "pmin": prof.get("pmin", 0), "pmax": prof.get("pmax", 20),
-            "watchlist": prof.get("watchlist", []), "alerts": prof.get("alerts", [])}
+            "watchlist": prof.get("watchlist", []), "alerts": prof.get("alerts", []),
+            "mode": prof.get("mode", "short"), "activity": prof.get("activity", [])[:20],
+            "last": prof.get("last")}
 
 
 @app.post("/api/watchlist")
@@ -530,6 +538,21 @@ def alert_add(name: str = Query(...), pin: str = Query(...), code: str = Query(.
         {"code": code, "price": price, "dir": direction, "created": now_s(), "triggered_at": None})
     save_users(load_users() | {name: prof})
     return {"ok": True}
+
+
+@app.post("/api/activity")
+def activity(name: str = Query(...), pin: str = Query(...), kind: str = Query(...), label: str = Query(""), code: str = Query("")):
+    prof = auth(name, pin)
+    rec = {"t": now_s(), "kind": kind, "label": label[:60], "code": code[:12]}
+    if kind == "mode" and label in ("cs", "short", "mid", "long"):
+        prof["mode"] = label
+    if kind in ("board", "stock", "chain"):
+        prof["last"] = rec
+    acts = prof.setdefault("activity", [])
+    acts.insert(0, rec)
+    del acts[60:]
+    save_users(load_users() | {name: prof})
+    return {"ok": True, "mode": prof.get("mode", "short"), "last": prof.get("last")}
 
 
 @app.get("/api/alerts")
