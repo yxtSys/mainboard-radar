@@ -24,7 +24,8 @@ L = []
 
 
 def build():
-    if not em.is_trade_date(today):
+    force = os.environ.get("FORCE_RUN") == "1"
+    if not em.is_trade_date(today) and not force:
         print("非交易日，休市")
         return None
     prev_day = em.prev_trade_date(today)
@@ -76,6 +77,15 @@ def build():
         L.append("- 无满足锚定的候选 → 竞价若无新主线，执行空仓预案")
     L.append("")
     L.append("## 二、隔夜与盘前环境")
+    prem = None
+    try:
+        prev = em.zt_pool_previous(today)
+        pcts = [float(x["pct"]) for x in prev if x.get("pct") is not None]
+        prem = round(sum(pcts) / len(pcts), 2) if pcts else None
+    except Exception:
+        pass
+    stage = "进攻期" if (prem or 0) >= 2 else ("退潮防守期" if (prem or 0) <= -0.5 else "震荡期")
+    L.append(f"- 情绪周期：昨涨停溢价 {prem if prem is not None else '缺源'}，阶段=**{stage}**（溢价>0才接力；最高板断板→高低切）")
     try:
         fut = em.sina_quotes(["hf_CHA50CFD", "hf_NQ"])
         for k, nm in [("hf_CHA50CFD", "A50期指"), ("hf_NQ", "纳指期货")]:
