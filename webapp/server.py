@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parent.parent  # 工作区根目录（quant/ 的
 sys.path.insert(0, str(ROOT / "quant"))
 import emdata as em  # noqa: E402
 from scoring import score_stock, is_valid_stock, fmt_stock, primary_strategy  # noqa: E402,F401
+from factors import FACTORS, compute_factors  # noqa: E402,F401
+from agents import analyze  # noqa: E402,F401
+import chain as chainmod  # noqa: E402
 
 from fastapi import FastAPI, HTTPException, Query  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
@@ -592,13 +595,28 @@ def stock_detail(code: str):
         except Exception:
             pass
         try:
-            df = ak.stock_zygc_em(symbol=sym)
+            df = None
+            for attempt in range(2):
+                try:
+                    df = ak.stock_zygc_em(symbol=sym)
+                    if df is not None and len(df):
+                        break
+                except Exception:
+                    time.sleep(2)
+                    df = None
             if df is not None and len(df):
-                latest = df["分期报告日期"].max()
-                sub = df[df["分期报告日期"] == latest].head(12)
-                zygc = [{"构成": str(r["主营构成"]), "收入(亿)": round(float(r["主营收入"]) / 1e8, 2) if r["主营收入"] == r["主营收入"] else None,
-                         "占比%": round(float(r["收入比例"]) * 100, 1) if r["收入比例"] == r["收入比例"] else None,
-                         "毛利率%": round(float(r["毛利率"]) * 100, 1) if r.get("毛利率") is not None and r["毛利率"] == r["毛利率"] else None}
+                latest = df["报告日期"].max()
+                sub = df[df["报告日期"] == latest].head(14)
+                def _pct(v):
+                    try:
+                        v = float(v)
+                        return round(v * 100, 1) if v <= 1.5 else round(v, 1)
+                    except Exception:
+                        return None
+                zygc = [{"类型": str(r.get("分类类型", "")), "构成": str(r["主营构成"]),
+                         "收入(亿)": round(float(r["主营收入"]) / 1e8, 2) if r["主营收入"] == r["主营收入"] else None,
+                         "占比%": _pct(r["收入比例"]),
+                         "毛利率%": _pct(r["毛利率"]) if "毛利率" in df.columns else None}
                         for _, r in sub.iterrows()]
                 zsrc.append("东方财富数据中心(F10主营构成)")
         except Exception:
@@ -609,7 +627,27 @@ def stock_detail(code: str):
     strategy = primary_strategy(strategies, s)
     factors = compute_factors(s, {})
     agents_res = analyze(s, factors, {})
+    # 股东结构（十大股东，来源：东财数据中心）
+    holders = []
+    try:
+        import akshare as ak
+        df = ak.stock_gdfx_top_10_em(symbol=sym, date=f"{dt.date.today().year}0630")
+        holders = [{"name": str(r["股东名称"]), "pct": round(float(r["占总股本持股比例"]), 2)}
+                   for _, r in df.head(5).iterrows() if r.get("占总股本持股比例") == r.get("占总股本持股比例")]
+    except Exception:
+        pass
+    # 产业链定位 + 同链条公司
+    try:
+        chain_data = chainmod.chain_profile(code, zygc, (profile or {}).get("所属行业", ""), s.get("name", ""), snap, get_zt())
+    except Exception:
+        chain_data = {"positions": [], "peers": [], "chains_known": list(chainmod.CHAINS.keys())}
     # —— 量化操作建议：全部由因子推导，每个数字可复算 ——
+    to = s.get("turnover") or 0
+    pct = s.get("pct") or 0
+    amt = (s.get("amount") or 0) / 1e8
+    mi = (s.get("main_in") or 0) / 1e8
+    chg60 = s.get("chg60")
+    mv = (s.get("float_mv") or 0) / 1e8
     t_score = int(min(100, to * 4 + abs(pct or 0) * 5 + (min(amt, 20) if amt else 0)))          # 做T适合度
     hold_score = int(min(100, (30 if (chg60 is not None and chg60 > -5) else 10) + (25 if mi > 0 else 5) + strategy["score"] * 0.4))  # 拿住适合度
     price = s.get("price") or 0
@@ -622,19 +660,20 @@ def stock_detail(code: str):
     elif t_score >= 45:
         style, how = "底仓拿住 + 2~3成做T（T分 %d/100）" % t_score, "锚=分时均价线与昨收价之间高抛低吸；破均价线当日停T"
     else:
-        style, how = "适合拿住（T分 %d/100，做T磨损大于收益）" % t_score, "锚=量化买入区间：分批于%s/%s，跌破%s止损（-5%纪律）" % (lvl["buy1"], lvl["buy2"], lvl["stop"])
+        style, how = "适合拿住（T分 %d/100，做T磨损大于收益）" % t_score, f"锚=量化买入区间：分批于{lvl['buy1']}/{lvl['buy2']}，跌破{lvl['stop']}止损（-5%硬纪律）"
     ops = {"t_score": t_score, "hold_score": hold_score, "levels": lvl, "position": pos,
            "style": style, "how": how,
-           "anchors": ["竞价价(9:25撮合)", "分时均价线", "板块领涨股(锚定龙头不动手弱跟风)",
-                       ("A50期指方向",) if a50 is not None else ("大盘环境分",)],
+           "anchors": ["竞价价(9:25撮合)", "分时均价线", "板块领涨股(锚定龙头不动手弱跟风)", "大盘环境分"],
            "buy": f"买1 {lvl['buy1']}（回踩2%）；买2 {lvl['buy2']}（深回踩4%）；突破减仓位 {lvl['reduce1']} 不追",
            "stop": f"止损 {lvl['stop']}（-5%硬纪律）；跌破竞价价且反抽不过均价线先减半"}
     return {"code": code, "name": s["name"], "price": s.get("price"), "pct": s.get("pct"),
             "strategy": strategy["strategy"], "strategy_score": strategy["score"],
             "strategies": strategies, "factors": factors, "agents": agents_res,
             "profile": profile, "zygc": zygc, "zygc_source": zsrc,
+            "chain": chain_data, "holders": holders,
             "ops": ops, "float_yi": round(mv, 1), "chg60": chg60,
-            "source": {"行情": "东财/新浪快照", "公司资料": zsrc or "未取到", "研判": "quant/agents.py 规则链+因子数值"}}
+            "source": {"行情": "东财/新浪快照", "公司资料": zsrc or "未取到", "研判": "quant/agents.py 规则链+因子数值",
+                       "产业链": "quant/chain.py 模板+主营构成关键词（东财概念成分/涨停池降级）"}}
 
 
 app.mount("/", StaticFiles(directory=str(ROOT / "webapp" / "static"), html=True))
