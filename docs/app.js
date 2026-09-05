@@ -87,3 +87,10 @@ $("#etfTabs").addEventListener("click", e => {
 chartPct = new Bubbles($("#cvPct"), "pct");
 chartFlow = new Bubbles($("#cvFlow"), "flow");
 load(); setInterval(load, 60000);
+if (!window._pwaInstalled) {
+  const hint = document.createElement("div");
+  hint.className = "alert-bar"; hint.style.margin = "0 12px 8px";
+  hint.innerHTML = "📲 安装到手机桌面：浏览器菜单 → 「添加到主屏幕」→ 下次点图标直接进，全屏运行";
+  document.querySelector("main").prepend(hint);
+  setTimeout(() => hint.remove(), 20000);
+}
