@@ -1,0 +1,35 @@
+name: morning-brief
+on:
+  schedule:
+    - cron: "27 1 * * 1-5"   # 北京时间周一至周五 9:27
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: morning-brief
+  cancel-in-progress: true
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-feed.txt
+      - name: run morning brief + email
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_AUTH_CODE: ${{ secrets.SMTP_AUTH_CODE }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python quant/morning_job.py
+      - name: commit brief for pages
+        run: |
+          git config user.name "yxtSys"
+          git config user.email "yxtSys@users.noreply.github.com"
+          git add docs/data/morning_latest.md
+          git diff --cached --quiet && echo "no change" && exit 0
+          git commit -m "morning brief $(date -u +%H:%M)"
+          git push
