@@ -303,6 +303,10 @@ async function openStock(code) {
       <table style="width:100%;font-size:12px;border-collapse:collapse"><tr style="color:var(--sub)"><td>构成</td><td>收入(亿)</td><td>占比%</td><td>毛利率%</td></tr>
       ${d.zygc.map(z => `<tr style="border-top:1px solid var(--line)"><td style="padding:3px">${esc(z.构成)}</td><td>${z["收入(亿)"] ?? "-"}</td><td>${z["占比%"] ?? "-"}</td><td>${z["毛利率%"] ?? "-"}</td></tr>`).join("")}</table></div>` : `<div class="card"><h4>业务拆解</h4><div class="note">F10主营构成暂缺源，稍后重试</div></div>`}
       ${d.profile && d.profile["简介"] ? `<div class="card"><h4>公司资料（${esc((d.zygc_source || ["巨潮资讯"]).join("+"))}）</h4><div class="st-why">${esc(d.profile["简介"] || "")}</div><div class="st-rf">主营：${esc(d.profile["主要产品及业务"] || "-")}</div></div>` : ""}
+      ${d.chain && (d.chain.positions || []).length ? `<div class="card"><h4>🏭 产业链定位</h4>
+      ${(d.chain.positions || []).map(p => `<div class="st-why">【${esc(p.chain)}】位置：<b>${esc(p.pos)}</b>（命中：${esc(p.matched)}）</div>`).join("")}
+      ${(d.chain.peers || []).map(pg => `<div class="st-why"><b>${esc(pg.chain)}</b>·${esc(pg.position)} 同链条：${(pg.companies || []).map(c => `<a href="javascript:void(0)" onclick="openStock('${c.code}')">${esc(c.name)}</a>`).join("、")}</div>`).join("")}</div>` : `<div class="card"><h4>🏭 产业链定位</h4><div class="note">主营构成未命中内置链条（支持：${esc((d.chain?.chains_known || []).join("/"))}）</div></div>`}
+      ${d.holders && d.holders.length ? `<div class="card"><h4>股东结构 TOP5（东财数据中心）</h4>${d.holders.map(h => `<div class="st-why">• ${esc(h.name)}｜${h.pct}%</div>`).join("")}</div>` : ""}
       <p class="foot">来源可溯：${esc(JSON.stringify(d.source))}</p>`;
   } catch (e) { el.innerHTML = `<div class="empty">失败：${esc(e.message).slice(0, 100)}</div>`; }
 }
