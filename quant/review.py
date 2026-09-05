@@ -99,6 +99,30 @@ def ops_card(zt, dt_, break_rate, premium, stage, advice, max_lbc, snap, top_in,
     else:
         play = "震荡试错：半仓跟主流板块，锚定中军分时均线"
     L.append(f"- 短线锚定打法：{play}｜铁律：买在分歧、卖在一致")
+    L.append("- 个股操作卡（明天竞价直接照做）：")
+    picks = []
+    seen = set()
+    for z in sorted(zt, key=lambda z: -int(z.get("lbc") or 1)):
+        c = str(z.get("code", ""))
+        if c in seen or not c.startswith(MAIN):
+            continue
+        s = by_code.get(c)
+        if not s:
+            continue
+        pr = s.get("price")
+        if pr is None or not (2 <= pr <= 20):
+            continue
+        lb = int(z.get("lbc") or 1)
+        role = "龙头" if lb == max_lbc else ("卡位" if lb >= 2 else "补涨")
+        if role == "补涨" and len([x for x in picks if x == "补涨"]) >= 2:
+            continue
+        seen.add(c)
+        g1, g2, gmax = round(pr * 1.015, 2), round(pr * 1.035, 2), round(pr * 1.05, 2)
+        b1, b2, stop = round(pr * 0.98, 2), round(pr * 0.96, 2), round(pr * 0.95, 2)
+        L.append(f"  · {z['name']} {c} {pr:.2f}元 {lb}板【{role}】｜高开{g1}~{g2}→跟(半路)；高开>{gmax}或低开→不跟｜买{b1}/{b2}｜止损{stop}｜全仓")
+        picks.append(role)
+        if len(picks) >= 6:
+            break
     # 中线推荐（主板<20 + 中线分）
     mids = []
     for s in snap:
