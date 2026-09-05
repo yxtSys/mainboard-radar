@@ -479,6 +479,11 @@ def boards():
 @app.get("/api/board/{code}")
 def board(code: str, pmin: float = 0, pmax: float = 10000, mode: str = ""):
     d = board_detail(code, pmin, pmax)
+    for s in d.get("stocks", []):
+        st = s.get("strategies")
+        if not st:
+            st = s["strategies"] = score_stock(s)
+        s["strategy"] = s.get("strategy") or primary_strategy(st, s)["strategy"]
     if mode in ("cs", "short", "mid", "long"):
         same = [s for s in d["stocks"] if s.get("strategy") == mode]
         if same:
