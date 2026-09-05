@@ -2,6 +2,9 @@
 """15:05 盘后复盘云任务：跑 review.py → 写 docs/data/review_latest.md → 邮件推送（secrets 存在才发）。"""
 import os
 import smtplib
+from email.mime.multipart import MIMEMultipart
+sys.path.insert(0, str(ROOT / 'quant'))
+from md2html import to_html
 import subprocess
 import sys
 from email.mime.text import MIMEText
@@ -25,7 +28,9 @@ print("已写入", out)
 user, code, to = os.environ.get("SMTP_USER"), os.environ.get("SMTP_AUTH_CODE"), os.environ.get("MAIL_TO")
 if user and code and to:
     try:
-        msg = MIMEText(md, "plain", "utf-8")
+        msg = MIMEMultipart("alternative")
+    msg.attach(MIMEText(md, "plain", "utf-8"))
+    msg.attach(MIMEText(to_html(md), "html", "utf-8"))
         msg["Subject"] = "主板雷达 · 盘后复盘 " + today[:10] if False else "主板雷达 · 盘后复盘"
         msg["From"], msg["To"] = user, to
         s = smtplib.SMTP_SSL("smtp.qq.com", 465, timeout=20)
